@@ -1,16 +1,17 @@
 #!/usr/bin/env python
 import sys, re
 
-keywords    = ['return', 'cond', 'while',   'apply', 'call', 'func', 'proc', 'rpn',
-               'global',  'def', 'local',     'let',  'set',  'int', 'real', 'char', 'array', 'matrix',
-               'and',      'or',   'not',     'sin',  'cos',  'tan', 'asin', 'acos',  'atan',  'atan2', 'sqrt',
-               'true',  'false', 'empty', 'invalid']
+keywords    = ['return', 'cond', 'while',   'apply',    'call',   'func',   'proc',  'rpn',
+               'global',  'def', 'local',     'let',     'set',    'int',   'real', 'char', 'array', 'matrix',
+               'and',      'or',   'not',     'sin',     'cos',    'tan',   'asin', 'acos',  'atan',  'atan2', 'sqrt',
+               'true',  'false', 'empty', 'invalid', '_error_', '_init_', '_loop_']
 
 operators   = [('+',  'PLUS'),  ('-',  'MINUS'), ('*',  'TIMES'), ('/',  'DIV'), ('%', 'MOD'),  ('++', 'INCR'), ('--', 'DECR'),
                ('=', 'ASSIGN'), ('<',  'LT'),    ('<=', 'LTE'),   ('==', 'EQ'),  ('>=', 'GTE'), ('>', 'GT'), 
                ('<<', 'SHL'),   ('>>', 'SHR'),   ('&',  'BAND'),  ('|',  'BOR'), ('^', 'BXOR'), ('~',  'BNOT')]
 
-structurers = [('(', 'LPAREN'), (')', 'RPAREN'), ('{', 'LBRACE'), ('}', 'RBRACE'), ('[', 'LBRACKET'), (']', 'RBRACKET'), (';', 'SEMI')]
+structurers = [('(', 'LPAREN'), (')', 'RPAREN'), ('{', 'LBRACE'), ('}', 'RBRACE'), ('[', 'LBRACKET'), (']', 'RBRACKET'), 
+               (';', 'SEMI'),   ('@', 'ATSIGN'), (',', 'COMMA')]
 
 relex = r"[a-zA-Z_]\w*"
 def lexeme (scanner, token): 
@@ -29,17 +30,32 @@ def number (scanner, token):
 	try:    return "INT",  int(token)
 	except: return "REAL", float(token)
 
-restrc = r"[(){}\[\];]"
+restrc = r"[(){}\[\];@,]"
 def struct (scanner, token):
 	for sym in structurers:
 		if sym[0] == token: return sym[1], None
 	err("Lexer is inconsistent; check structuring characters")
  
+recomm = r"//.*$"
+def comment (scanner, token):
+	print "Comment Line " + str(lineno) + ": " + token
+
+redstr = r'".*?"'
+def string (scanner, token):
+	return "STRING", token[1:-1]
+
+resstr = r"'.*?'"
+def string (scanner, token):
+	return "STRING", token[1:-1]
+
 scanner = re.Scanner([
     (relex,   lexeme), # id or keyword
+    (recomm, comment), # comment to end of line
     (reop,  operator), # prefix or infix
     (renum,   number), # int or real
     (restrc,  struct), # program structure
+    (redstr,  string), # string in double quotes
+    (resstr,  string), # string in single quotes
     (r"\s+",    None), # whitespace
     ])
  

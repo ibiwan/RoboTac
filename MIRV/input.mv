@@ -1,6 +1,7 @@
 foo = 5 * 30; bar = bar - 60.6; 7.>>
 let x = .5;
-x + x - x -- x ++ x / x * x ** x 
-f(x);
-{{{{x = 3;}}}}
+x + x - x -- @x "som'e str\ing" ++ x / x "some ot\\her\\\\\ string\\" * x ** x 
+f(x); // comment
+{{{{x = 3, 2; 'more " string'}}}}
 int x[4] = 27;
+// comment2
