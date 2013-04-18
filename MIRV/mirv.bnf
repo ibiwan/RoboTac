@@ -1,0 +1,109 @@
+program      -> definitions .
+
+definitions  -> definition definitions .
+definitions  -> "epsilon" .
+
+definition   -> scope deftype .
+
+deftype      -> funcdef .
+deftype      -> procdef .
+deftype      -> vardef .
+
+funcdef      -> "func" typename identifier "(" formalparams ")"  "=" block.
+
+procdef      -> "proc" identifier "(" formalparams ")"  "=" block.
+
+vardef       -> typename identifier "=" expression ";" . 
+
+block        -> "{" statements "}" . 
+
+statements   -> statement statements .
+statements   -> "epsilon" .
+
+statement    -> expression ";" .
+statement    -> definition ";" .
+statement    -> kwstmt ";" .
+
+expression   -> term opterm .
+
+opterm       -> infixop expression .
+opterm       -> "epsilon" .
+
+term         -> literal .
+term         -> prebinding .
+term         -> indexable index .
+
+index        -> "[" expression "]" .
+index        -> "epsilon" .
+
+indexable    -> identifier .
+indexable    -> application .
+indexable    -> prefixop expression .
+indexable    -> "(" expression ")" .
+
+formalparams -> typename identifier moreformals .
+formalparams -> "epsilon" .
+
+moreformals  -> "," formalparams .
+moreformals  -> "epsilon" .
+
+actualparams -> "@" identifier "=" expression moreactuals .
+actualparams -> expression moreactuals .
+actualparams -> "epsilon" .
+
+moreactuals  -> "," actualparams .
+moreactuals  -> "epsilon" .
+
+prebinding   -> "prebind" binding .
+
+binding      -> identifier actuals . 
+
+fkwbinding   -> fnkw actuals . 
+
+pkwbinding   -> prockw actuals . 
+
+actuals      -> "(" actualparams ")" . 
+
+kwstmt       -> "cond" "{" condelements "}" .
+kwstmt       -> "while" "(" expression ")" block .
+kwstmt       -> "set" identifier "=" expression .
+kwstmt       -> "rpn" rpnelements . 
+kwstmt       -> calling .
+kwstmt       -> "return" expression . 
+
+condelements -> "(" expression ")" block condelements .
+condelements -> "epsilon" .
+
+rpnelements  -> rpnelement rpnelements .
+rpnelements  -> "epsilon" .
+
+rpnelement   -> identifier .
+rpnelement   -> infixop .
+rpnelement   -> prefixop .
+rpnelement   -> fnkw .
+
+calling      -> "call" cbinding .
+
+cbinding     -> binding .
+cbinding     -> pkwbinding .
+
+application  -> "apply" abinding .
+
+abinding     -> binding .
+abinding     -> fkwbinding .
+
+typename     -> "typename" .
+
+fnkw         -> "fnkw" .
+
+scope        -> "scope" .
+
+prockw       -> "prockw" .
+
+prefixop     -> "prefixop" .
+
+infixop      -> "infixop" .
+
+identifier   -> "identifier" .
+
+literal      -> "literal" .
