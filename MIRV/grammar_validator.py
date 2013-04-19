@@ -40,55 +40,46 @@ def isEmpty(prod):
 	return len(prod) == 1 and prod[0] == epsilon
 
 def IsNullable(symbol):
-	if symbol == epsilon:
-		return True
-	if isTerminal(symbol):
-		return False
+	if symbol == epsilon:  return True
+	if isTerminal(symbol): return False
 	return grammar[symbol].nullable
 				
 def AllNullable(chain):
-	allNullable = True
-	for s in chain:
-		if not IsNullable(s):
-			allNullable = False
-	return allNullable
+	return all(IsNullable(s) for s in chain)
 
 def FirstOfChain(chain): # [Y1, Y2, ..., Yk]
 	if not len(chain): return set()
 	first1 = FirstOfSymbol(chain[0])
-	if not epsilon in first1:
-		return first1
+	if not epsilon in first1: return first1
 	ret = (first1 - set(epsilon)) | FirstOfChain(chain[1:]) # union
 	if all(epsilon in FirstOfSymbol(Y) for Y in chain): 
 		ret.add(epsilon)
 	return ret
 
 def FirstOfSymbol(symbol):
+	if isTerminal(symbol): return set([symbol])
 	ret = set()
-	if isTerminal(symbol):
-		ret.add(symbol)
-		return ret
 	if symbol in grammar:
 		for prod in grammar[symbol].productions:
-			if isEmpty(prod):
-				grammar[symbol].first_set.add(prod[0])
-			else:
-				ret |= FirstOfChain(prod) # union
+			if isEmpty(prod): grammar[symbol].first_set.add(prod[0])
+			else:             ret |= FirstOfChain(prod) # union
  	return ret
 
 def FIRST(symbol):
-	if symbol == epsilon:
-		return set()
-	if symbol in grammar:
-		return grammar[symbol].first_set
-	return set()
+	if symbol == epsilon or not symbol in grammar: return set()
+	return grammar[symbol].first_set
 
 def FOLLOW(symbol):
-	if symbol == epsilon:
-		return set()
-	if symbol in grammar:
-		return grammar[symbol].follow_set
-	return set()
+	if symbol == epsilon or not symbol in grammar:  return set()
+	return grammar[symbol].follow_set
+
+def UnifyFollowSets(syma, setb):
+	seta = FOLLOW(syma)
+	newset = seta | setb
+	if syma == epsilon or seta == newset:
+		return False
+	grammar[syma].follow_set = newset
+	return True
 
 ## Read Productions from input
 for line in sys.stdin:
@@ -117,10 +108,11 @@ for symbol in grammar.keys():
 				print "ERROR: undefined nonterminal: " + subsym
 
 ## Print Productions
-#for symbol in grammar.keys():
-#	print symbol
-#	for prod in grammar[symbol].productions:
-#		print " "*(15) + " -> " + str(prod)
+print "PRODUCTIONS:"
+for symbol in grammar.keys():
+	print symbol
+	for prod in grammar[symbol].productions:
+		print " "*(15) + " -> " + str(prod)
 
 ## Check Nullability
 changesMade = True
@@ -136,18 +128,18 @@ while changesMade:
 					changesMade = True
 
 ## Print Nullability
-#print "Nullable Symbols:"
-#for symbol in grammar.keys():
-#	if grammar[symbol].nullable:
-#		print symbol
+print "NULLABLE SYMBOLS:"
+for symbol in grammar.keys():
+	if grammar[symbol].nullable: print symbol
 
 ## Calculate First Sets
 for symbol in grammar.keys():
 	grammar[symbol].first_set = FIRST(symbol) | FirstOfSymbol(symbol) # union
 
 ## Print First Sets
-#for symbol in grammar.keys():
-#	print "FS<" + symbol + ">:" + " "*(20 - len(symbol)) + str(FIRST(symbol]))
+print "FIRST SETS:"
+for symbol in grammar.keys():
+	print "FS<" + symbol + ">:" + " "*(20 - len(symbol)) + str(FIRST(symbol))
 
 ## A. Make sure all First Sets of productions for a given symbol are disjoint
 for symbol in grammar.keys():
@@ -168,7 +160,7 @@ for symbol in grammar.keys():
 				if len(f1 & f2): # intersection
 					print "WARNING: uniqueness conflict for " + symbol + " in production " + prod
 					print "\t" + f1; print "\t" + f2
-			s1 = s2
+			s1 = s2 # update pair 'afore loopin'
 
 ## C. Irrelevant (only for Extended BNF, not handled here)
 
@@ -183,19 +175,14 @@ while changesMade:
 			k = len(prod)
 			for i in range(k):
 				if i == k-1 or AllNullable(prod[i+1:k]):
-					newset = FOLLOW(prod[i])| FOLLOW(symbol)
-					if prod[i] != epsilon and newset != FOLLOW(prod[i]):
-						changesMade = True
-						grammar[prod[i]].follow_set = FOLLOW(prod[i]) | newset
+					changesMade = UnifyFollowSets(prod[i], FOLLOW(symbol))
 				for j in range(i+1, k):
 					if i + 1 == j or AllNullable(prod[i+1:j]):
-						newset = (FIRST(prod[j]) - set([epsilon])) | FOLLOW(prod[i])
-						if prod[i] != epsilon and prod[j] != epsilon and newset != FOLLOW(prod[i]):
-							changesMade = True
-							grammar[prod[i]].follow_set = FOLLOW(prod[i]) | newset
-
+						changesMade = UnifyFollowSets(prod[i], FIRST(prod[j]) - set([epsilon]))
+						
 ## Print Follow Sets
-#for symbol in grammar.keys():
-#	if grammar[symbol].follow_set:
-#		print "FolS<" + symbol + ">:" + " "*(20 - len(symbol)) + str(FOLLOW(symbol))
+print "FOLLOW SETS:"
+for symbol in grammar.keys():
+	if grammar[symbol].follow_set:
+		print "FolS<" + symbol + ">:" + " "*(18 - len(symbol)) + str(FOLLOW(symbol))
 

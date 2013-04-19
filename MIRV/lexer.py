@@ -1,14 +1,16 @@
 #!/usr/bin/env python
 import sys, re
 
-keywords    = ['return', 'cond', 'while',   'apply',    'call',   'func',   'proc',  'rpn',
+keywords    = ['return', 'cond', 'while',   'apply',    'call',   'func',   'proc',  'prebind', 'rpn',
                'global',  'def', 'local',     'let',     'set',    'int',   'real', 'char', 'array', 'matrix',
                'and',      'or',   'not',     'sin',     'cos',    'tan',   'asin', 'acos',  'atan',  'atan2', 'sqrt',
                'true',  'false', 'empty', 'invalid', '_error_', '_init_', '_loop_']
 
-operators   = [('+',  'PLUS'),  ('-',  'MINUS'), ('*',  'TIMES'), ('/',  'DIV'), ('%', 'MOD'),  ('++', 'INCR'), ('--', 'DECR'),
-               ('=', 'ASSIGN'), ('<',  'LT'),    ('<=', 'LTE'),   ('==', 'EQ'),  ('>=', 'GTE'), ('>', 'GT'), 
-               ('<<', 'SHL'),   ('>>', 'SHR'),   ('&',  'BAND'),  ('|',  'BOR'), ('^', 'BXOR'), ('~',  'BNOT')]
+prefixops   = [('++', 'INCR'), ('--', 'DECR'), ('~',  'BNOT')]
+
+infixops   = [('+',  'PLUS'),  ('-',  'MINUS'), ('*',  'TIMES'), ('/',  'DIV'), ('%', 'MOD'), 
+               ('<',  'LT'),    ('<=', 'LTE'),   ('==', 'EQ'),  ('>=', 'GTE'), ('>', 'GT'), 
+               ('<<', 'SHL'),   ('>>', 'SHR'),   ('&',  'BAND'),  ('|',  'BOR'), ('^', 'BXOR')]
 
 structurers = [('(', 'LPAREN'), (')', 'RPAREN'), ('{', 'LBRACE'), ('}', 'RBRACE'), ('[', 'LBRACKET'), (']', 'RBRACKET'), 
                (';', 'SEMI'),   ('@', 'ATSIGN'), (',', 'COMMA')]
@@ -21,8 +23,11 @@ def lexeme (scanner, token):
 
 reop = r"[=+\-*/<>%&|^~]+"
 def operator (scanner, token):
-	for op in operators:
-		if op[0] == token: return op[1], None
+	if token == "=": return "ASSIGN", None
+	for op in prefixops:
+		if op[0] == token: return 'PREFIXOP', op[1]
+	for op in infixops:
+		if op[0] == token: return 'INFIXOP', op[1]
 	err("Invalid operator, ignored: \"" + token + "\"")
 
 renum = r"[0-9]+(\.[0-9]*)?|[0-9]*\.[0-9]+" # 5, 1., .4, 3.7 are all valid
@@ -74,5 +79,5 @@ def lexer(file):
 			yield token # makes this into a generator
 		lineno += 1
 
-for token in lexer(sys.stdin):
-	print token
+#for token in lexer(sys.stdin):
+#	print token

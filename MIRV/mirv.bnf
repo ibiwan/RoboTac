@@ -5,15 +5,15 @@ definitions  -> "epsilon" .
 
 definition   -> scope deftype .
 
-deftype      -> funcdef .
-deftype      -> procdef .
-deftype      -> vardef .
+deftype      -> "func" funcdef .
+deftype      -> "proc" procdef .
+deftype      -> identifier vardef .
 
-funcdef      -> "func" typename identifier "(" formalparams ")"  "=" block.
+funcdef      -> typename identifier "(" formalparams ")"  "=" block .
 
-procdef      -> "proc" identifier "(" formalparams ")"  "=" block.
+procdef      -> identifier "(" formalparams ")"  "=" block .
 
-vardef       -> typename identifier "=" expression ";" . 
+vardef       -> typename identifier "=" expression ";". 
 
 block        -> "{" statements "}" . 
 
