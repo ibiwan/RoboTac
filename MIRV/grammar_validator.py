@@ -22,13 +22,16 @@ import sys, re
 # C. [exp] or {exp}  :  The sets of start symbols of exp and of symbols that may follow K must be disjoint.
 
 epsilon = '"epsilon"'
+EOF = '"end-of-file"'
 grammar = dict()
+startSym = None
 
 class symbolRules:
 	def __init__(self):
 		self.productions = list()
-		self.first_set = set()
-		self.follow_set = set()
+		self.first_set   = set()
+		self.follow_set  = set()
+		self.nullable    = False
 
 def isTerminal(symbol):
 	return re.match(r"\".*?\"", symbol)
@@ -64,17 +67,18 @@ for line in sys.stdin:
 	if line.strip() == "": continue
 	match = re.search(r"^(\w+)\s+->\s*(.*?)\s*\.\s*$", line)
 	if not match:
-		print "ERROR: badly-formed BNF line: " + line
-		continue
+		print "ERROR: badly-formed BNF line: " + line; continue
 	symbol = match.group(1)
 	prod = re.split(r"\s+", match.group(2))
 	if len(prod) and prod[0] == symbol:
-		print "ERROR: left-recursive production"
-		continue
-	if not symbol in grammar:
-		grammar[symbol] = symbolRules()
+		print "ERROR: left-recursive production"; continue
+	if not startSym:          startSym = symbol
+	if not symbol in grammar: grammar[symbol] = symbolRules()
+	for s in prod:
+		if not s in grammar:
+			grammar[s] = symbolRules()
 	grammar[symbol].productions.append(prod)
-
+		
 
 ## Make sure all nonterminals are defined
 for symbol in grammar.keys():
@@ -83,13 +87,47 @@ for symbol in grammar.keys():
 			if not isTerminal(subsym) and subsym not in grammar:
 				print "ERROR: undefined nonterminal: " + subsym
 
+def IsNullable(symbol):
+	if symbol == epsilon:
+		return True
+	if isTerminal(symbol):
+		return False
+	return grammar[symbol].nullable
+				
+def AllNullable(chain):
+	allNullable = True
+	for s in chain:
+		if not IsNullable(s):
+			allNullable = False
+	return allNullable
+
+
+## Check Nullability
+changesMade = True
+while changesMade:
+	changesMade = False
+	for symbol in grammar.keys():
+		if not grammar[symbol].nullable:
+			for prod in grammar[symbol].productions:
+				if			len(prod) == 0 \
+						or (len(prod) == 1 and prod[0] == epsilon) \
+						or AllNullable(prod):
+					grammar[symbol].nullable = True
+					changesMade = True
+
+## Print Nullability
+#print "Nullable Symbols:"
+#for symbol in grammar.keys():
+#	if grammar[symbol].nullable:
+#		print symbol
+
 ## Calculate First Sets
 for symbol in grammar.keys():
 	grammar[symbol].first_set |= FirstOfSymbol(symbol) # union
 
 ## Print First Sets
-for symbol in grammar.keys():
-	print "FS<" + symbol + ">:" + " "*(20 - len(symbol)) + str(grammar[symbol].first_set)
+#for symbol in grammar.keys():
+#	print "FS<" + symbol + ">:" + " "*(20 - len(symbol)) + str(grammar[symbol].first_set)
 
 ## A. Make sure all First Sets of productions for a given symbol are disjoint
 for symbol in grammar.keys():
@@ -116,4 +154,36 @@ for symbol in grammar.keys():
 ## C. Irrelevant (only for Extended BNF, not handled here)
 
 ## check correctness of follow sets
+if startSym: 
+	grammar[startSym].follow_set.add(EOF)
+changesMade = True
+while changesMade:
+	changesMade = False
+	for symbol in grammar.keys():
+		for prod in grammar[symbol].productions:
+			k = len(prod)
+			for i in range(k):
+				if i == k-1 or AllNullable(prod[1:i]):
+					newset = grammar[prod[i]].follow_set | grammar[symbol].follow_set
+					if newset != grammar[symbol].follow_set:
+						changesMade = True
+						grammar[symbol].follow_set |= newset
+						#print "updated 1! " + str(newset)
+				for j in range(i+1, k):
+					if i + 1 == j or AllNullable(prod[i+1:j]):
+						newset = grammar[prod[j]].first_set | grammar[symbol].follow_set
+						if newset != grammar[symbol].follow_set:
+							changesMade = True
+							grammar[symbol].follow_set |= newset
+							#print "updated 2! " + str(newset)
 
+
+
+## Print Follow Sets
+for symbol in grammar.keys():
+	print "FolS<" + symbol + ">:" + " "*(20 - len(symbol)) + str(grammar[symbol].follow_set)
+
+#for symbol in grammar.keys():
+#	print symbol
+#	for prod in grammar[symbol].productions:
+#		print " "*(15) + " -> " + str(prod)
