@@ -21,7 +21,7 @@ statements   -> statement statements .
 statements   -> "epsilon" .
 
 statement    -> expression ";" .
-statement    -> definition ";" .
+statement    -> definition .
 statement    -> kwstmt ";" .
 
 expression   -> term opterm .
@@ -68,7 +68,7 @@ kwstmt       -> "cond" "{" condelements "}" .
 kwstmt       -> "while" "(" expression ")" block .
 kwstmt       -> "set" identifier "=" expression .
 kwstmt       -> "rpn" rpnelements . 
-kwstmt       -> calling .
+kwstmt       -> "call" cbinding .
 kwstmt       -> "return" expression . 
 
 condelements -> "(" expression ")" block condelements .
@@ -81,8 +81,6 @@ rpnelement   -> identifier .
 rpnelement   -> infixop .
 rpnelement   -> prefixop .
 rpnelement   -> fnkw .
-
-calling      -> "call" cbinding .
 
 cbinding     -> binding .
 cbinding     -> pkwbinding .

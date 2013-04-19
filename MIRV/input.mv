@@ -1,4 +1,4 @@
-set func real somefunc (int x, real y) = {return x + y;}
+def func real somefunc (int x, real y) = {def int z = 7; set z = x * 2; return x + y;}
 
 
 foo = 5 * 30; bar = bar - 60.6; 7.>>
