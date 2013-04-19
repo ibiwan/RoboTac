@@ -4,6 +4,7 @@ import lexer, sys
 EOF = "end-of-file"
 sym = None
 
+
 ## Terminal Sets ##
 
 varTypes = ["INT", "REAL", "ARRAY", "LIST", "STRING", "MATRIX"]
@@ -14,6 +15,7 @@ funcKeys = ['sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'atan2', 'sqrt']
 procKeys = ['_error_', '_init_', '_loop_']
 opKeys   = ['and', 'or', 'not']
 valKeys  = ['true', 'false', 'empty', 'invalid',]
+
 
 ## Streamy Stuff ##
 
@@ -75,8 +77,7 @@ def deftype(defScope):
 	elif sym[0] == "PROC":
 		nextsym()
 		procdef(defScope)
-	elif sym[0] in varTypes: #FUNC/PROC handled separately
-		nextsym()
+	elif sym[0] in varTypes:
 		vardef(defScope, sym[1])
 	else: error("type specifier")
 
@@ -105,9 +106,10 @@ def procdef(procScope):
 	block()
 
 def vardef(varScope, varType):
-	# -> identifier "=" expression ";" . 
+	# -> typename identifier "=" expression ";" . 
 	# FIRST: "typename"
 	# FOLLOW: "end-of-file", ";", "scope"
+	varType = consume(varTypes, "variable type specifier")[0]
 	varName = consume("ID", "identifier")[1]
 	consume("ASSIGN", "assignment")
 	expression()
@@ -160,7 +162,7 @@ def expression():
 	if sym[0] in ["PREBIND", "PREFIXOP", "APPLY", "ID", "LPAREN"] + literals:
 		term()
 		opterm()
-	else: error("expression (prebinding, function application, prefix operator, identifier, or left-paren)")
+	# let term() handle error case(s)
 
 def term():
 	# -> literal              FIRST: "literal"
@@ -212,31 +214,32 @@ def index():
 	# -> "epsilon" .
 	# FIRST: "epsilon", "["
 	# FOLLOW: "infixop", "[", ")", "]", ";", ","
-	if consume("[", None):
+	if consume("LBRACKET", None):
 		expression()
-		consume("]", "right square bracket")
+		consume("RBRACKET", "right square bracket")
 	# epsilon: no "else"
-
 
 def formalparams():
 	# -> typename identifier moreformals .
 	# -> "epsilon" .
 	# FIRST: "epsilon", "typename"
 	# FOLLOW: ")"
-	found = consume(allTypes, None)
-	if found: #epsilon: ok to not find
-		paramType = found[0]
+	if sym[0] in allTypes:
+		paramType = consume(allTypes, None)[0]
 		paramName = consume("ID", "identifier")[1]
 		#print "formal param: ", paramType, paramName
 		moreformals()
+	# epsilon: no "else"
 
 def moreformals():
 	# -> "," formalparams .
 	# -> "epsilon" .
 	# FIRST: "epsilon", ","
 	# FOLLOW: ")"
-	found = consume("COMMA", None)
-	if found: formalparams() # epsilon: ok not to find
+	if sym[0] == "COMMA":
+		consume("COMMA", None)
+		formalparams() 
+	# epsilon: no "else"
 
 def actualparams():
 	# -> "@" identifier "=" expression moreactuals .  FIRST: "@"
@@ -295,9 +298,9 @@ def actuals():
 	# -> "(" actualparams ")" . 
 	# FIRST: "("
 	# FOLLOW: "infixop", "[", ")", "]", ";", ","
-	consume("(", "left parenthesis")
+	consume("LPAREN", "left parenthesis")
 	actualparams()
-	consume(")", "right parenthesis")
+	consume("RPAREN", "right parenthesis")
 
 def kwstmt():
 	# -> "cond" "{" condelements "}" .        FIRST: "cond"
@@ -312,48 +315,96 @@ def kwstmt():
 		consume("LBRACE", "left curly brace")
 		condelements()
 		consume("RBRACE", "right curly brace")
-		return
-	if consume("WHILE", None):
+	elif consume("WHILE", None):
 		consume("LPAREN", "left parenthesis")
 		expression()
 		consume("RPAREN", "right parenthesis") 
 		block()
-		return
-	if consume("SET", None):
+	elif consume("SET", None):
 		target = consume("ID", "identifier")[1]
 		consume("ASSIGN", "assignment")
 		expression()
-		return
-	if consume("RPN", None):
+	elif consume("RPN", None):
 		rpnelements()
-		return
-	if consume("CALL", None):
+	elif consume("CALL", None):
 		cbinding()
-		return
-	if consume("RETURN", None):
+	elif consume("RETURN", None):
 		expression()
-		return
-	error("keyword (cond, while, set, rpn, call, return)")
+	else: error("keyword (cond, while, set, rpn, call, return)")
 
-#condelements -> "(" expression ")" block condelements .
-#condelements -> "epsilon" .
-#rpnelements  -> rpnelement rpnelements .
-#rpnelements  -> "epsilon" .
-#rpnelement   -> identifier .
-#rpnelement   -> infixop .
-#rpnelement   -> prefixop .
-#rpnelement   -> fnkw .
-#cbinding     -> binding .
-#cbinding     -> pkwbinding .
-#application  -> "apply" abinding .
-#abinding     -> binding .
-#abinding     -> fkwbinding .
-#typename     -> "typename" .
-#scope        -> "scope" .
-#prockw       -> "prockw" .
-#prefixop     -> "prefixop" .
-#infixop      -> "infixop" .
-#identifier   -> "identifier" .
+def condelements():
+	# -> "(" expression ")" block condelements .
+	# -> "epsilon" .
+	# FIRST: "epsilon", "("
+	# FOLLOW: "}"
+	if consume("LPAREN", None):
+		expression()
+		consume("RPAREN", "right parenthesis")
+		block()
+		condelements()
+	# epsilon: no "else"
+
+def rpnelements():
+	# -> rpnelement rpnelements .
+	# -> "epsilon" .
+	# FIRST: "infixop", "prefixop", "fnkw", "identifier", "epsilon", "opkw", "literal"
+	# FOLLOW: ";"
+	if sym[0] in ["INFIXOP", "PREFIXOP", "ID"] + funcKeys + opKeys:
+		rpnelement()
+		rpnelements()
+	# let rpnelement() handle error case(s)
+
+def rpnelement():
+	# -> identifier .
+	# -> infixop .
+	# -> prefixop .
+	# -> fnkw .
+	# -> opkw .
+	# -> literal .
+	# FIRST: "infixop", "prefixop", "fnkw", "identifier", "opkw", "literal"
+	# FOLLOW: "infixop", "prefixop", "fnkw", "identifier", "opkw", "literal", ";"
+	if sym[0] == "ID":
+		name = consume("ID", None)[1]
+	elif sym[0] == "INFIXOP":
+		operator = consume("INFIXOP", None)[1]
+	elif sym[0] == "PREFIXOP":
+		operator = consume("PREFIXOP", None)[1]
+	elif sym[0] in funcKeys:
+		function = consume(funcKeys, None)[0]
+	elif sym[0] in opKeys:
+		operator = consume(opKeys, None)[0]
+	elif sym[0] in literals:
+		type, value = consume(literals, None)
+	else: error("operator, function, variable, or literal value")
+
+def cbinding():
+	# -> binding .
+	# -> pkwbinding .
+	# FIRST: "identifier", "prockw"
+	# FOLLOW: ";"
+	if sym[0] == "ID":
+		binding()
+	elif sym[0] in procKeys:
+		pkwbinding()
+	else: error("identifier or procedure keyword")
+
+def application():
+	# -> "apply" abinding
+	# FIRST: "apply"
+	# FOLLOW: "]", "infixop", ";", "[", ")", ","
+	consume("APPLY", "apply")
+	abinding()
+
+def abinding():
+	# -> binding .
+	# -> fkwbinding .
+	# FIRST: "identifier", "fnkw"
+	# FOLLOW: "]", "infixop", ";", "[", ")", ","
+	if sym[0] == "ID":
+		binding()
+	elif sym[0] in funcKeys:
+		fkwbinding()
+	else: error("identifier or function keyword")
 
 def identifier():
 	# -> "identifier"
@@ -370,9 +421,7 @@ def literal():
 	print "literal of type " + type + " = " + str(value)
 
 
-
-
-## Start It Up!
+## Start It Up! ##
 
 lex = lexer.lexer(sys.stdin)
 nextsym()

@@ -1,5 +1,12 @@
-def func real somefunc (int x, real y) = {def int z = 7; set z = x * 2; return x + y;}
+def func real somefunc
+ (int x, real y) = {
+ def int z = 7; set z = x * 2; 
+ return x + y;}
 
+let real x = 5.7;
+local proc myproc () = {
+set x = 'pu""rple';
+}
 
 foo = 5 * 30; bar = bar - 60.6; 7.>>
 let x = .5;

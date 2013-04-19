@@ -81,6 +81,8 @@ rpnelement   -> identifier .
 rpnelement   -> infixop .
 rpnelement   -> prefixop .
 rpnelement   -> fnkw .
+rpnelement   -> opkw .
+rpnelement   -> literal .
 
 cbinding     -> binding .
 cbinding     -> pkwbinding .
@@ -105,3 +107,5 @@ infixop      -> "infixop" .
 identifier   -> "identifier" .
 
 literal      -> "literal" .
+
+opkw         -> "opkw" .
