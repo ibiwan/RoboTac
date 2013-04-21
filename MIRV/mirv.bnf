@@ -7,7 +7,7 @@ definition   -> scope deftype .
 
 deftype      -> "func" funcdef .
 deftype      -> "proc" procdef .
-deftype      -> identifier vardef .
+deftype      -> vardef .
 
 funcdef      -> typename identifier "(" formalparams ")"  "=" block .
 

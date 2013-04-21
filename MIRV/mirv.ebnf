@@ -1,0 +1,41 @@
+program      -> { definition } .
+
+definition   -> "scope" ( funcdef | procdef | vardef ) .
+
+funcdef      -> "func" "typename" "identifier" "(" formalparams ")"  "=" "{" { statement } "}" .
+
+procdef      -> "proc" "identifier" "(" formalparams ")"  "=" "{" { statement } "}" .
+
+vardef       -> "typename" "identifier" "=" expression ";". 
+
+statement    -> definition | ( expression | conds | whiles | sets | rpns | calls | returns ) ";" .
+
+expression   -> term [ "infixop" expression ] .
+
+term         -> "literal" | prebinding | indexable [ "[" expression "]" ] .
+
+indexable    -> "identifier" | "apply" ( "identifier" | "fnkw" ) actuals | "prefixop" expression | "(" expression ")" .
+
+formalparams -> [ "typename" "identifier" [ "," formalparams ] ] .
+
+actualparams -> [ [ "@" "identifier" "=" ] expression [ "," actualparams ] ] .
+
+prebinding   -> "prebind" "identifier" actuals .
+
+actuals      -> "(" actualparams ")" . 
+
+conds        -> "cond" "{" condelements "}" .
+
+whiles       -> "while" "(" expression ")" "{" { statement } "}" .
+
+sets         -> "set" "identifier" "=" expression .
+
+rpns         -> "rpn" rpnelements . 
+
+calls        -> "call" ( "identifier" | "prockw" ) actuals .
+
+returns      -> "return" expression . 
+
+condelements -> { "(" expression ")" "{" { statement } "}" } .
+
+rpnelements  -> { "identifier" | "infixop" | "prefixop" | "fnkw" | "opkw" | "literal" } .

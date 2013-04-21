@@ -43,101 +43,110 @@ def consume(target, english): # "None" for english when missing symbol is ok
 
 ### Recursors ###
 
-def program():
+def program(depth):
 	# -> definitions .
 	# FIRST: "scope"
 	# FOLLOW: "end-of-file"
-	definitions()
+	print "| "*depth + "program"
+	definitions(depth+1)
 
-def definitions():
+def definitions(depth):
 	# -> definition definitions .
 	# -> "epsilon" .
 	# FIRST: "epsilon", "scope"
 	# FOLLOW: "end-of-file"
+	print "| "*depth + "definitions"
 	if sym[0] != EOF:
-		definition()
-		definitions()
+		definition(depth+1)
+		definitions(depth+1)
 
-def definition():
+def definition(depth):
 	# -> scope deftype .
 	# FIRST: "scope"
 	# FOLLOW: "end-of-file", ";", "scope"
+	print "| "*depth + "definition"
 	scope = consume(scopes, "scope symbol")[0]
-	deftype(scope)
+	deftype(depth+1, scope)
 
-def deftype(defScope):
+def deftype(depth, defScope):
 	# -> "func" funcdef .
 	# -> "proc" procdef .
-	# -> typename vardef .
+	# -> vardef .
 	# FIRST: "func", "typename", "proc"
 	# FOLLOW: "end-of-file", ";", "scope"
+	print "| "*depth + "deftype"
 	if sym[0] == "FUNC":
 		nextsym()
-		funcdef(defScope)
+		funcdef(depth+1, defScope)
 	elif sym[0] == "PROC":
 		nextsym()
-		procdef(defScope)
+		procdef(depth+1, defScope)
 	elif sym[0] in varTypes:
 		# don't eat type
-		vardef(defScope, sym[1])
+		vardef(depth+1, defScope, sym[1])
 	else: error("type specifier")
 
-def funcdef(funcScope):
+def funcdef(depth, funcScope):
 	# -> typename identifier "(" formalparams ")"  "=" block .
 	# FIRST: "typename"
 	# FOLLOW: "end-of-file", ";", "scope"
+	print "| "*depth + "funcdef"
 	funcReturnType = consume(varTypes, "variable type specifier")[0] # FUNC/PROC handled separately
 	funcName = consume("ID", "identifier")[1]
-	#print "function setup: ", funcScope, funcReturnType, funcName
+	print "| " * depth + "function setup: ", funcScope, funcReturnType, funcName
 	consume("LPAREN", "left parenthesis")
-	formalparams()
+	formalparams(depth+1)
 	consume("RPAREN", "right parenthesis")
 	consume("ASSIGN", "assignment")
-	block()
+	block(depth+1)
 
-def procdef(procScope):
+def procdef(depth, procScope):
 	# -> identifier "(" formalparams ")"  "=" block .
 	# FIRST: "("
 	# FOLLOW: "end-of-file", ";", "scope"
+	print "| "*depth + "procdef"
 	procName = consume("ID", "identifier")[1]
 	consume("LPAREN", "left parenthesis")
-	formalparams()
+	formalparams(depth+1)
 	consume("RPAREN", "right parenthesis")
 	consume("ASSIGN", "assignment")
-	block()
+	block(depth+1)
 
-def vardef(varScope, varType):
+def vardef(depth, varScope, varType):
 	# -> typename identifier "=" expression ";" . 
 	# FIRST: "typename"
 	# FOLLOW: "end-of-file", ";", "scope"
+	print "| "*depth + "vardef"
 	varType = consume(varTypes, "variable type specifier")[0]
 	varName = consume("ID", "identifier")[1]
 	consume("ASSIGN", "assignment")
-	expression()
+	expression(depth+1)
 	consume("SEMI", "semicolon")
 	
-def block():
+def block(depth):
 	# -> "{" statements "}" . 
 	# FIRST: "{"
 	# FOLLOW: "}", "end-of-file", ";", "scope", "("
+	print "| "*depth + "block"
 	consume("LBRACE", "left curly brace")
-	statements()
+	statements(depth+1)
 	consume("RBRACE", "right curly brace")
 
-def statements():
+def statements(depth):
 	# -> statement statements .
 	# -> "epsilon" .
 	# FIRST: "prebind", "prefixop", "set", "(", "identifier", "cond", "epsilon", 
 	#        "call", "literal", "scope", "rpn", "return", "apply", "while"
 	# FOLLOW: "}"
+	print "| "*depth + "statements"
 	if sym[0] in ["PREBIND", "PREFIXOP", "SET", "LPAREN", "ID", "COND", "CALL", "RPN", \
 				  "RETURN", "APPLY", "WHILE"] + literals + scopes:
 		# don't eat symbol; we don't use it here
-		statement()
-		statements()
+		statement(depth+1)
+		statements(depth+1)
 	# epsilon: no "else"
 
-def statement():
+def statement(depth):
 	# -> expression ";" 	FIRST: "prebind", "prefixop", "literal", "apply", "identifier", "("
 	# -> definition      	FIRST: "scope"
 	# -> kwstmt ";" 		FIRST: "while", "set", "rpn", "return", "cond", "call"
@@ -145,217 +154,235 @@ def statement():
 	#        "call", "literal", "scope", "rpn", "return", "apply", "while"
 	# FOLLOW: "prebind", "prefixop", "set", "apply", "(", "cond", "}", "while", 
 	#         "literal", "scope", "rpn", "return", "identifier", "call"
+	print "| "*depth + "statement"
 	if sym[0] in ["PREBIND", "PREFIXOP", "APPLY", "ID", "LPAREN"] + literals:
-		expression()
+		expression(depth+1)
 		consume("SEMI", "semicolon")
 	elif sym[0] in scopes:
-		definition() # definitions include their own semicolon if needed
+		definition(depth+1) # definitions include their own semicolon if needed
 	elif sym[0] in ["WHILE", "SET", "RPN", "RETURN", "COND", "CALL"]:
-		kwstmt()
+		kwstmt(depth+1)
 		consume("SEMI", "semicolon")
 	else: error("statement (expression; or definition; or keyword statement;)")
 
-def expression():
+def expression(depth):
 	# -> term opterm .
 	# FIRST: "prebind", "prefixop", "literal", "apply", "identifier", "("
 	# FOLLOW: "infixop", "[", ")", "]", ";", ","
 	# check first set 
+	print "| "*depth + "expression"
 	if sym[0] in ["PREBIND", "PREFIXOP", "APPLY", "ID", "LPAREN"] + literals:
-		term()
-		opterm()
+		term(depth+1)
+		opterm(depth+1)
 	# let term() handle error case(s)
 
-def term():
+def term(depth):
 	# -> literal              FIRST: "literal"
 	# -> prebinding .         FIRST: "prebind"
 	# -> indexable index .    FIRST: "prefixop", "apply", "identifier", "("
 	# FIRST: "prebind", "prefixop", "literal", "apply", "identifier", "("
 	# FOLLOW: "infixop", "[", ")", "[", ";", ","
+	print "| "*depth + "term"
 	if sym[0] in literals:
-		literal()
+		literal(depth+1)
 	elif sym[0] == "PREBIND":
-		prebinding()
+		prebinding(depth+1)
 	elif sym[0] in ["PREFIXOP", "APPLY", "ID", "LPAREN"] :
-		indexable()
-		index()
+		indexable(depth+1)
+		index(depth+1)
 	else: error("literal, prebinding, or indexable (prefix operator, function application, identifier, or left-paren)")
 
-def opterm():
+def opterm(depth):
 	# -> infixop expression .
 	# -> "epsilon"
 	# FIRST: "infixop", "epsilon"
 	# FOLLOW: "infixop", "[", ")", "]", ";", ","
+	print "| "*depth + "opterm"
 	if sym[0] == "INFIXOP":
 		operator = consume("INFIXOP", "infix operator")[1]
-		#print "operator: " + operator
-		expression()
+		print "| "*depth +  "operator: " + operator
+		expression(depth+1)
 	# epsilon: no "else"
 
-def indexable():
+def indexable(depth):
 	# -> identifier .          FIRST: "identifier"
 	# -> application .         FIRST: "apply"
 	# -> prefixop expression . FIRST: "prefixop"
 	# -> "(" expression ")" .  FIRST: "("
 	# FIRST: "apply", "identifier", "prefixop", "("
 	# FOLLOW: "]", "infixop", ";", "[", ")", ","
+	print "| "*depth + "indexable"
 	if sym[0] == "ID":
-		identifier()
+		identifier(depth+1)
 	elif sym[0] == "APPLY":
-		application()
+		application(depth+1)
 	elif sym[0] == "PREFIXOP":
-		prefixop()
-		expression()
+		prefixop(depth+1)
+		expression(depth+1)
 	elif consume("(", None):
-		expression()
+		expression(depth+1)
 		consume(")", "right parenthesis")
 	else: error("indexable (identifier, function application, prefix operator, or left-paren)")
 
-def index():
+def index(depth):
 	# -> "[" expression "]" .
 	# -> "epsilon" .
 	# FIRST: "epsilon", "["
 	# FOLLOW: "infixop", "[", ")", "]", ";", ","
+	print "| "*depth + "index"
 	if consume("LBRACKET", None):
-		expression()
+		expression(depth+1)
 		consume("RBRACKET", "right square bracket")
 	# epsilon: no "else"
 
-def formalparams():
+def formalparams(depth):
 	# -> typename identifier moreformals .
 	# -> "epsilon" .
 	# FIRST: "epsilon", "typename"
 	# FOLLOW: ")"
+	print "| "*depth + "formalparams"
 	if sym[0] in allTypes:
 		paramType = consume(allTypes, None)[0]
 		paramName = consume("ID", "identifier")[1]
-		#print "formal param: ", paramType, paramName
-		moreformals()
+		print "| "*depth + "formal param: ", paramType, paramName
+		moreformals(depth+1)
 	# epsilon: no "else"
 
-def moreformals():
+def moreformals(depth):
 	# -> "," formalparams .
 	# -> "epsilon" .
 	# FIRST: "epsilon", ","
 	# FOLLOW: ")"
+	print "| "*depth + "moreformals"
 	if sym[0] == "COMMA":
 		consume("COMMA", None)
-		formalparams() 
+		formalparams(depth+1) 
 	# epsilon: no "else"
 
-def actualparams():
+def actualparams(depth):
 	# -> "@" identifier "=" expression moreactuals .  FIRST: "@"
 	# -> expression moreactuals .                     FIRST: "prebind", "prefixop", "literal", "apply", "identifier", "("
 	# -> "epsilon" .                                  FIRST: "epsilon"
 	# FIRST: "prebind", "prefixop", ")", "identifier", "@", "epsilon", "literal", "apply"
 	# FOLLOW: 
+	print "| "*depth + "actualparams"
 	if consume("ATSIGN", None):
-		identifier()
+		identifier(depth+1)
 		consume("ASSIGN", "assignment")
-		expression()
-		moreactuals()
+		expression(depth+1)
+		moreactuals(depth+1)
 	elif sym[0] in ["PREBIND", "PREFIXOP", "APPLY", "ID", "LPAREN"] + literals:
-		expression()
-		moreactuals()
+		expression(depth+1)
+		moreactuals(depth+1)
 	# epsilon: no "else"
 
-def moreactuals():
+def moreactuals(depth):
 	# -> "," actualparams .
 	# -> "epsilon" .
 	# FIRST: "epsilon", ","
 	# FOLLOW: ")"
+	print "| "*depth + "moreactuals"
 	if consume("COMMA", None):
-		actualparams()
+		actualparams(depth+1)
 	# epsilon: no "else"
 
-def prebinding():
+def prebinding(depth):
 	# -> "prebind" binding .
 	# FIRST: "prebind"
 	# FOLLOW: "infixop", "[", ")", "]", ";", ","
+	print "| "*depth + "prebinding"
 	consume("PREBIND", "prebind")
-	binding()
+	binding(depth+1)
 
-def binding():
+def binding(depth):
 	# -> identifier actuals . 
 	# FIRST: "identifier"
 	# FOLLOW: "]", "infixop", "[", ";", ")", ","
+	print "| "*depth + "binding"
 	name = consume("ID", "identifier")[1]
-	actuals()
+	actuals(depth+1)
 
-def fkwbinding():
+def fkwbinding(depth):
 	# -> fnkw actuals . 
 	# FIRST: "fnkw"
 	# FOLLOW: "]", "infixop", ";", "[", ")", ","
+	print "| "*depth + "fkwbinding"
 	name = consume(funcKeys)[0]
-	actuals()
+	actuals(depth+1)
 
-def pkwbinding():
+def pkwbinding(depth):
 	# -> prockw actuals . 
 	# FIRST: "prockw"
 	# FOLLOW: ";"
+	print "| "*depth + "pkwbinding"
 	name = consume(procKeys)[0]
-	actuals()
+	actuals(depth+1)
 
-def actuals():
+def actuals(depth):
 	# -> "(" actualparams ")" . 
 	# FIRST: "("
 	# FOLLOW: "infixop", "[", ")", "]", ";", ","
+	print "| "*depth + "actuals"
 	consume("LPAREN", "left parenthesis")
-	actualparams()
+	actualparams(depth+1)
 	consume("RPAREN", "right parenthesis")
 
-def kwstmt():
-	# -> "cond" "{" condelements "}" .        FIRST: "cond"
-	# -> "while" "(" expression ")" block .   FIRST: "while"
+def kwstmt(depth):
+	# -> "cond"| "{" condelements "}" .        FIRST: "cond"
+	# -> "while"| "(" expression ")" block .   FIRST: "while"
 	# -> "set" identifier "=" expression .    FIRST: "set"
 	# -> "rpn" rpnelements .                  FIRST: "rpn"
 	# -> "call" cbinding .                    FIRST: "call"
 	# -> "return" expression .                FIRST: "return"
 	# FIRST: "while", "set", "rpn", "return", "cond", "call"
 	# FOLLOW: ";"
+	print "| "*depth + "kwstmt"
 	if consume("COND", None):
 		consume("LBRACE", "left curly brace")
-		condelements()
+		condelements(depth+1)
 		consume("RBRACE", "right curly brace")
 	elif consume("WHILE", None):
 		consume("LPAREN", "left parenthesis")
-		expression()
+		expression(depth+1)
 		consume("RPAREN", "right parenthesis") 
-		block()
+		blockdepth+1()
 	elif consume("SET", None):
 		target = consume("ID", "identifier")[1]
 		consume("ASSIGN", "assignment")
-		expression()
+		expression(depth+1)
 	elif consume("RPN", None):
-		rpnelements()
+		rpnelements(depth+1)
 	elif consume("CALL", None):
-		cbinding()
+		cbinding(depth+1)
 	elif consume("RETURN", None):
-		expression()
+		expression(depth+1)
 	else: error("keyword (cond, while, set, rpn, call, return)")
 
-def condelements():
+def condelements(depth):
 	# -> "(" expression ")" block condelements .
 	# -> "epsilon" .
 	# FIRST: "epsilon", "("
 	# FOLLOW: "}"
+	print "| "*depth + "condelements"
 	if consume("LPAREN", None):
-		expression()
+		expression(depth+1)
 		consume("RPAREN", "right parenthesis")
-		block()
-		condelements()
+		block(depth+1)
+		condelements(depth+1)
 	# epsilon: no "else"
 
-def rpnelements():
+def rpnelements(depth):
 	# -> rpnelement rpnelements .
 	# -> "epsilon" .
 	# FIRST: "infixop", "prefixop", "fnkw", "identifier", "epsilon", "opkw", "literal"
 	# FOLLOW: ";"
+	print "| "*depth + "rpnelements"
 	if sym[0] in ["INFIXOP", "PREFIXOP", "ID"] + funcKeys + opKeys:
-		rpnelement()
-		rpnelements()
+		rpnelement(depth+1)
+		rpnelements(depth+1)
 	# let rpnelement() handle error case(s)
 
-def rpnelement():
+def rpnelement(depth):
 	# -> identifier .
 	# -> infixop .
 	# -> prefixop .
@@ -364,6 +391,7 @@ def rpnelement():
 	# -> literal .
 	# FIRST: "infixop", "prefixop", "fnkw", "identifier", "opkw", "literal"
 	# FOLLOW: "infixop", "prefixop", "fnkw", "identifier", "opkw", "literal", ";"
+	print "| "*depth + "rpnelement"
 	if sym[0] == "ID":
 		name = consume("ID", None)[1]
 	elif sym[0] == "INFIXOP":
@@ -378,52 +406,57 @@ def rpnelement():
 		type, value = consume(literals, None)
 	else: error("operator, function, variable, or literal value")
 
-def cbinding():
+def cbinding(depth):
 	# -> binding .
 	# -> pkwbinding .
 	# FIRST: "identifier", "prockw"
 	# FOLLOW: ";"
+	print "| "*depth + "cbinding"
 	if sym[0] == "ID":
-		binding()
+		binding(depth+1)
 	elif sym[0] in procKeys:
-		pkwbinding()
+		pkwbinding(depth+1)
 	else: error("identifier or procedure keyword")
 
-def application():
+def application(depth):
 	# -> "apply" abinding
 	# FIRST: "apply"
 	# FOLLOW: "]", "infixop", ";", "[", ")", ","
+	print "| "*depth + "application"
 	consume("APPLY", "apply")
-	abinding()
+	abinding(depth+1)
 
-def abinding():
+def abinding(depth):
 	# -> binding .
 	# -> fkwbinding .
 	# FIRST: "identifier", "fnkw"
 	# FOLLOW: "]", "infixop", ";", "[", ")", ","
+	print "| "*depth + "abinding"
 	if sym[0] == "ID":
-		binding()
+		binding(depth+1)
 	elif sym[0] in funcKeys:
-		fkwbinding()
+		fkwbinding(depth+1)
 	else: error("identifier or function keyword")
 
-def identifier():
+def identifier(depth):
 	# -> "identifier"
 	# FIRST: "identifier"
 	# FOLLOW: "=", "prefixop", "(", ")", "infixop", "[", "]", ";", "fnkw", "identifier", "typename", ","
+	print "| "*depth + "identifier"
 	name = consume("ID", "identifier")[1]
-	#print "identifier: \"" + str(name) + "\""
+	print "| "*depth + "identifier: \"" + str(name) + "\""
 
-def literal():
+def literal(depth):
 	# -> "literal"
 	# FIRST: "literal"
 	# FOLLOW: "infixop", "[", "_", "]", ";", ","
+	print "| "*depth + "literal"
 	type, value = consume(literals, "literal (int, real, string)")
-	#print "literal of type " + type + " = " + str(value)
+	print "| "*depth + "literal of type " + type + " = " + str(value)
 
 
 ## Start It Up! ##
 
 lex = lexer.lexer(sys.stdin)
 nextsym()
-program()
+program(0)

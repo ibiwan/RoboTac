@@ -72,7 +72,8 @@ def lexer(file):
 	global lineno
 	lineno = 1
 	for line in file:
-		print "\n\nLine " + str(lineno) + ":\t\t" + line
+		line = line.strip()
+		print "Line " + str(lineno) + ":\t\t" + line
 		tokens, remainder = scanner.scan(line)
 		if remainder: err("Invalid token(s), ignored: \"" + remainder + "\"")
 		for token in tokens:
