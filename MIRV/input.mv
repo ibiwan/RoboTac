@@ -1,3 +1,4 @@
+def proc myproc () = { 1 - 2 - 3; }
 def func real somefunc
  (int x, real y) = {
  def int z = 7; set z = x * 2; 

@@ -157,6 +157,7 @@ def statement(depth):
 	print "| "*depth + "statement"
 	if sym[0] in ["PREBIND", "PREFIXOP", "APPLY", "ID", "LPAREN"] + literals:
 		expression(depth+1)
+		print "returned from expression"
 		consume("SEMI", "semicolon")
 	elif sym[0] in scopes:
 		definition(depth+1) # definitions include their own semicolon if needed
@@ -201,7 +202,7 @@ def opterm(depth):
 	if sym[0] == "INFIXOP":
 		operator = consume("INFIXOP", "infix operator")[1]
 		print "| "*depth +  "operator: " + operator
-		expression(depth+1)
+		expression(depth+1) # <<FIXME>> LOOP OVER TERMS AND ACCUMULATE; LR BNF DOES NOT SUPPORT L-A OPS
 	# epsilon: no "else"
 
 def indexable(depth):

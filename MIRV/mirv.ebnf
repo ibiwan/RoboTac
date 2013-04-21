@@ -2,40 +2,40 @@ program      -> { definition } .
 
 definition   -> "scope" ( funcdef | procdef | vardef ) .
 
-funcdef      -> "func" "typename" "identifier" "(" formalparams ")"  "=" "{" { statement } "}" .
+funcdef      -> "func" "typename" "identifier" "(" [ formalparams ] ")"  "=" "{" { statement } "}" .
 
-procdef      -> "proc" "identifier" "(" formalparams ")"  "=" "{" { statement } "}" .
+procdef      -> "proc" "identifier" "(" [ formalparams ] ")"  "=" "{" { statement } "}" .
 
 vardef       -> "typename" "identifier" "=" expression ";". 
 
-statement    -> definition | ( expression | conds | whiles | sets | rpns | calls | returns ) ";" .
+statement    -> definition 
+              | ( expression | cond | while | set | rpn | call | return ) ";" .
 
-expression   -> term [ "infixop" expression ] .
+expression   -> term { "infixop" term } .
 
-term         -> "literal" | prebinding | indexable [ "[" expression "]" ] .
+term         -> "literal" 
+              | prebinding 
+              | indexable [ "[" expression "]" ] .
 
-indexable    -> "identifier" | "apply" ( "identifier" | "fnkw" ) actuals | "prefixop" expression | "(" expression ")" .
+indexable    -> "identifier" 
+              | "apply" ( "identifier" | "fnkw" ) "(" [ actualparams ] ")" 
+              | "prefixop" expression 
+              | "(" expression ")" .
 
-formalparams -> [ "typename" "identifier" [ "," formalparams ] ] .
+formalparams -> "typename" "identifier" [ "," formalparams ] .
 
-actualparams -> [ [ "@" "identifier" "=" ] expression [ "," actualparams ] ] .
+actualparams -> [ "@" "identifier" "=" ] expression [ "," actualparams ] .
 
-prebinding   -> "prebind" "identifier" actuals .
+prebinding   -> "prebind" "identifier" "(" actualparams ")" .
 
-actuals      -> "(" actualparams ")" . 
+cond        -> "cond" "{" { "(" expression ")" "{" { statement } "}" } "}" .
 
-conds        -> "cond" "{" condelements "}" .
+while       -> "while" "(" expression ")" "{" { statement } "}" .
 
-whiles       -> "while" "(" expression ")" "{" { statement } "}" .
+set         -> "set" "identifier" "=" expression .
 
-sets         -> "set" "identifier" "=" expression .
+rpn         -> "rpn" { "identifier" | "infixop" | "prefixop" | "fnkw" | "opkw" | "literal" } . 
 
-rpns         -> "rpn" rpnelements . 
+call        -> "call" ( "identifier" | "prockw" ) "(" [ actualparams ] ")" .
 
-calls        -> "call" ( "identifier" | "prockw" ) actuals .
-
-returns      -> "return" expression . 
-
-condelements -> { "(" expression ")" "{" { statement } "}" } .
-
-rpnelements  -> { "identifier" | "infixop" | "prefixop" | "fnkw" | "opkw" | "literal" } .
+return      -> "return" expression . 

@@ -188,7 +188,7 @@ def opterm():
 	if sym[0] == "INFIXOP":
 		operator = consume("INFIXOP", "infix operator")[1]
 		#print "operator: " + operator
-		expression()
+		expression() # <<FIXME>> LOOP OVER TERMS AND ACCUMULATE; LR BNF DOES NOT SUPPORT L-A OPS
 	# epsilon: no "else"
 
 def indexable():
