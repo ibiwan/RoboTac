@@ -71,7 +71,7 @@ def definition(depth):
 def deftype(depth, defScope):
 	# -> "func" funcdef .
 	# -> "proc" procdef .
-	# -> vardef .
+	# -> typename vardef .
 	# FIRST: "func", "typename", "proc"
 	# FOLLOW: "end-of-file", ";", "scope"
 	print "| "*depth + "deftype"
@@ -102,7 +102,7 @@ def funcdef(depth, funcScope):
 
 def procdef(depth, procScope):
 	# -> identifier "(" formalparams ")"  "=" block .
-	# FIRST: "("
+	# FIRST: "identifier"
 	# FOLLOW: "end-of-file", ";", "scope"
 	print "| "*depth + "procdef"
 	procName = consume("ID", "identifier")[1]
@@ -157,7 +157,6 @@ def statement(depth):
 	print "| "*depth + "statement"
 	if sym[0] in ["PREBIND", "PREFIXOP", "APPLY", "ID", "LPAREN"] + literals:
 		expression(depth+1)
-		print "returned from expression"
 		consume("SEMI", "semicolon")
 	elif sym[0] in scopes:
 		definition(depth+1) # definitions include their own semicolon if needed
@@ -194,7 +193,7 @@ def term(depth):
 	else: error("literal, prebinding, or indexable (prefix operator, function application, identifier, or left-paren)")
 
 def opterm(depth):
-	# -> infixop expression .
+	# -> infixop expression opterm .
 	# -> "epsilon"
 	# FIRST: "infixop", "epsilon"
 	# FOLLOW: "infixop", "[", ")", "]", ";", ","
@@ -202,7 +201,8 @@ def opterm(depth):
 	if sym[0] == "INFIXOP":
 		operator = consume("INFIXOP", "infix operator")[1]
 		print "| "*depth +  "operator: " + operator
-		expression(depth+1) # <<FIXME>> LOOP OVER TERMS AND ACCUMULATE; LR BNF DOES NOT SUPPORT L-A OPS
+		expression(depth+1)
+	 	opterm(depth+1)
 	# epsilon: no "else"
 
 def indexable(depth):
@@ -264,7 +264,7 @@ def actualparams(depth):
 	# -> "@" identifier "=" expression moreactuals .  FIRST: "@"
 	# -> expression moreactuals .                     FIRST: "prebind", "prefixop", "literal", "apply", "identifier", "("
 	# -> "epsilon" .                                  FIRST: "epsilon"
-	# FIRST: "prebind", "prefixop", ")", "identifier", "@", "epsilon", "literal", "apply"
+	# FIRST: "prebind", "prefixop", "(", "identifier", "@", "epsilon", "literal", "apply"
 	# FOLLOW: 
 	print "| "*depth + "actualparams"
 	if consume("ATSIGN", None):
@@ -329,8 +329,8 @@ def actuals(depth):
 	consume("RPAREN", "right parenthesis")
 
 def kwstmt(depth):
-	# -> "cond"| "{" condelements "}" .        FIRST: "cond"
-	# -> "while"| "(" expression ")" block .   FIRST: "while"
+	# -> "cond" "{" condelements "}" .        FIRST: "cond"
+	# -> "while" "(" expression ")" block .   FIRST: "while"
 	# -> "set" identifier "=" expression .    FIRST: "set"
 	# -> "rpn" rpnelements .                  FIRST: "rpn"
 	# -> "call" cbinding .                    FIRST: "call"

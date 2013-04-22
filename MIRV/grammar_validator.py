@@ -109,7 +109,9 @@ for symbol in grammar.keys():
 
 ## Print Productions
 print "PRODUCTIONS:"
-for symbol in grammar.keys():
+symbols = grammar.keys()
+symbols.sort()
+for symbol in symbols:
 	print symbol
 	for prod in grammar[symbol].productions:
 		print " "*(15) + " -> " + str(prod)
@@ -129,7 +131,9 @@ while changesMade:
 
 ## Print Nullability
 print "NULLABLE SYMBOLS:"
-for symbol in grammar.keys():
+symbols = grammar.keys()
+symbols.sort()
+for symbol in symbols:
 	if grammar[symbol].nullable: print symbol
 
 ## Calculate First Sets
@@ -138,7 +142,9 @@ for symbol in grammar.keys():
 
 ## Print First Sets
 print "FIRST SETS:"
-for symbol in grammar.keys():
+symbols = grammar.keys()
+symbols.sort()
+for symbol in symbols:
 	print "FS<" + symbol + ">:" + " "*(20 - len(symbol)) + str(FIRST(symbol))
 
 ## A. Make sure all First Sets of productions for a given symbol are disjoint
@@ -182,7 +188,9 @@ while changesMade:
 						
 ## Print Follow Sets
 print "FOLLOW SETS:"
-for symbol in grammar.keys():
+symbols = grammar.keys()
+symbols.sort()
+for symbol in symbols:
 	if grammar[symbol].follow_set:
 		print "FolS<" + symbol + ">:" + " "*(18 - len(symbol)) + str(FOLLOW(symbol))
 

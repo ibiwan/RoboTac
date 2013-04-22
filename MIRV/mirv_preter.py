@@ -97,7 +97,7 @@ def funcdef(funcScope):
 
 def procdef(procScope):
 	# -> identifier "(" formalparams ")"  "=" block .
-	# FIRST: "("
+	# FIRST: "identifier"
 	# FOLLOW: "end-of-file", ";", "scope"
 	procName = consume("ID", "identifier")[1]
 	consume("LPAREN", "left parenthesis")
@@ -181,14 +181,15 @@ def term():
 	else: error("literal, prebinding, or indexable (prefix operator, function application, identifier, or left-paren)")
 
 def opterm():
-	# -> infixop expression .
+	# -> infixop expression opterm .
 	# -> "epsilon"
 	# FIRST: "infixop", "epsilon"
 	# FOLLOW: "infixop", "[", ")", "]", ";", ","
 	if sym[0] == "INFIXOP":
 		operator = consume("INFIXOP", "infix operator")[1]
 		#print "operator: " + operator
-		expression() # <<FIXME>> LOOP OVER TERMS AND ACCUMULATE; LR BNF DOES NOT SUPPORT L-A OPS
+		expression()
+		opterm()
 	# epsilon: no "else"
 
 def indexable():
@@ -246,7 +247,7 @@ def actualparams():
 	# -> "@" identifier "=" expression moreactuals .  FIRST: "@"
 	# -> expression moreactuals .                     FIRST: "prebind", "prefixop", "literal", "apply", "identifier", "("
 	# -> "epsilon" .                                  FIRST: "epsilon"
-	# FIRST: "prebind", "prefixop", ")", "identifier", "@", "epsilon", "literal", "apply"
+	# FIRST: "prebind", "prefixop", "(", "identifier", "@", "epsilon", "literal", "apply"
 	# FOLLOW: 
 	if consume("ATSIGN", None):
 		identifier()

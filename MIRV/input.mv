@@ -1,18 +1,22 @@
 def proc myproc () = { 1 - 2 - 3; }
-def func real somefunc
- (int x, real y) = {
- def int z = 7; set z = x * 2; 
- return x + y;}
+
+def func real somefunc (int x, real y) = 
+{ // blagh
+	def int z = 7; 
+	set z = x * 2; // blargh
+ 	return x + y;
+} 
 
 let real x = 5.7;
+
 local proc myproc () = {
-set x = 'pu""rple';
+	set x = 'pu""rple';
 }
 
 foo = 5 * 30; bar = bar - 60.6; 7.>>
 let x = .5;
 x + x - x -- @x "som'e str\ing" ++ x / x "some ot\\her\\\\\ string\\" * x ** x 
-f(x); // comment
+f(x); // comments are allowed!
 {{{{x = 3, 2; 'more " string'}}}}
 int x[4] = 27;
 // comment2
