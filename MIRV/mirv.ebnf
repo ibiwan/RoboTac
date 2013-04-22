@@ -11,7 +11,7 @@ vardef       -> "typename" "identifier" "=" expression ";".
 statement    -> definition 
               | ( expression | cond | while | set | rpn | call | return ) ";" .
 
-expression   -> term { "infixop" term } .
+expression   -> term { "infixop" expression } .
 
 term         -> "literal" 
               | prebinding 
