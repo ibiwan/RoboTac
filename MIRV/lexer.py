@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 import sys, re
 
-keywords    = ['return', 'cond', 'while',   'apply',    'call',   'func',   'proc',  'prebind', 'rpn',
-               'global',  'def', 'local',     'let',     'set',    'int',   'real', 'char', 'array', 'matrix',
-               'and',      'or',   'not',     'sin',     'cos',    'tan',   'asin', 'acos',  'atan',  'atan2', 'sqrt',
+keywords    = ['return', 'cond', 'while',   'apply',    'call',  'tcall',   'func', 'proc', 'prebind',    'rpn',
+               'global',  'def', 'local',     'let',     'set',    'int',   'real', 'char',   'array', 'matrix',
+               'and',      'or',   'not',     'sin',     'cos',    'tan',   'asin', 'acos',    'atan',  'atan2', 'sqrt',
                'true',  'false', 'empty', 'invalid', '_error_', '_init_', '_loop_']
 
 prefixops   = [('++', 'INCR'), ('--', 'DECR'), ('~',  'BNOT')]

@@ -31,6 +31,7 @@ opterm       -> "epsilon" .
 
 term         -> literal .
 term         -> prebinding .
+term         -> prefixop expression .
 term         -> indexable index .
 
 index        -> "[" expression "]" .
@@ -38,7 +39,6 @@ index        -> "epsilon" .
 
 indexable    -> identifier .
 indexable    -> application .
-indexable    -> prefixop expression .
 indexable    -> "(" expression ")" .
 
 formalparams -> typename identifier moreformals .
@@ -69,6 +69,7 @@ kwstmt       -> "while" "(" expression ")" block .
 kwstmt       -> "set" identifier "=" expression .
 kwstmt       -> "rpn" rpnelements . 
 kwstmt       -> "call" cbinding .
+kwstmt       -> "tcall" cbinding .
 kwstmt       -> "return" expression . 
 
 condelements -> "(" expression ")" block condelements .

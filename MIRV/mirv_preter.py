@@ -166,16 +166,20 @@ def expression():
 	# let term() handle error case(s)
 
 def term():
-	# -> literal              FIRST: "literal"
-	# -> prebinding .         FIRST: "prebind"
-	# -> indexable index .    FIRST: "prefixop", "apply", "identifier", "("
+	# -> literal               FIRST: "literal"
+	# -> prebinding .          FIRST: "prebind"
+	# -> prefixop expression . FIRST: "prefixop"
+	# -> indexable index .     FIRST: "apply", "identifier", "("
 	# FIRST: "prebind", "prefixop", "literal", "apply", "identifier", "("
-	# FOLLOW: "infixop", "[", ")", "[", ";", ","
+	# FOLLOW: "infixop", "[", ")", ";", ","
 	if sym[0] in literals:
 		literal()
 	elif sym[0] == "PREBIND":
 		prebinding()
-	elif sym[0] in ["PREFIXOP", "APPLY", "ID", "LPAREN"] :
+	elif sym[0] == "PREFIXOP":
+		prefixop()
+		expression()
+	elif sym[0] in ["APPLY", "ID", "LPAREN"] :
 		indexable()
 		index()
 	else: error("literal, prebinding, or indexable (prefix operator, function application, identifier, or left-paren)")
@@ -193,23 +197,19 @@ def opterm():
 	# epsilon: no "else"
 
 def indexable():
-	# -> identifier .          FIRST: "identifier"
-	# -> application .         FIRST: "apply"
-	# -> prefixop expression . FIRST: "prefixop"
-	# -> "(" expression ")" .  FIRST: "("
-	# FIRST: "apply", "identifier", "prefixop", "("
+	# -> identifier .         FIRST: "identifier"
+	# -> application .        FIRST: "apply"
+	# -> "(" expression ")" . FIRST: "("
+	# FIRST: "apply", "identifier", "("
 	# FOLLOW: "]", "infixop", ";", "[", ")", ","
 	if sym[0] == "ID":
 		identifier()
 	elif sym[0] == "APPLY":
 		application()
-	elif sym[0] == "PREFIXOP":
-		prefixop()
-		expression()
 	elif consume("(", None):
 		expression()
 		consume(")", "right parenthesis")
-	else: error("indexable (identifier, function application, prefix operator, or left-paren)")
+	else: error("indexable (identifier, function application, or left-paren)")
 
 def index():
 	# -> "[" expression "]" .

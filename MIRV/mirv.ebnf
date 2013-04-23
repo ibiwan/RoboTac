@@ -15,11 +15,11 @@ expression   -> term { "infixop" expression } .
 
 term         -> "literal" 
               | prebinding 
+              | "prefixop" expression 
               | indexable [ "[" expression "]" ] .
 
 indexable    -> "identifier" 
               | "apply" ( "identifier" | "fnkw" ) "(" [ actualparams ] ")" 
-              | "prefixop" expression 
               | "(" expression ")" .
 
 formalparams -> "typename" "identifier" [ "," formalparams ] .
@@ -36,6 +36,6 @@ set         -> "set" "identifier" "=" expression .
 
 rpn         -> "rpn" { "identifier" | "infixop" | "prefixop" | "fnkw" | "opkw" | "literal" } . 
 
-call        -> "call" ( "identifier" | "prockw" ) "(" [ actualparams ] ")" .
+call        -> ( "tcall" | "call" ) ( "identifier" | "prockw" ) "(" [ actualparams ] ")" .
 
 return      -> "return" expression . 
