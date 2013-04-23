@@ -4,7 +4,7 @@ import sys, re
 keywords    = ['return', 'cond', 'while',   'apply',    'call',  'tcall',   'func', 'proc', 'prebind',    'rpn',
                'global',  'def', 'local',     'let',     'set',    'int',   'real', 'char',   'array', 'matrix',
                'and',      'or',   'not',     'sin',     'cos',    'tan',   'asin', 'acos',    'atan',  'atan2', 'sqrt',
-               'true',  'false', 'empty', 'invalid', '_error_', '_init_', '_loop_']
+               'true',  'false', 'empty', 'invalid', '_error_', '_init_', '_loop_', 'push', 'pop', 'peek', 'load', 'store']
 
 prefixops   = [('++', 'INCR'), ('--', 'DECR'), ('~',  'BNOT')]
 

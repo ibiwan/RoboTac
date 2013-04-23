@@ -11,11 +11,10 @@ varTypes = ["INT", "REAL", "ARRAY", "LIST", "STRING", "MATRIX"]
 allTypes = varTypes + ["PROC", "FUNC"]
 scopes   = ["DEF", "GLOBAL", "LET", "LOCAL"]
 literals = ["INT", "REAL", "STRING"]#, "CHAR", "ARRAY", "MATRIX", "BOOL"]
-funcKeys = ['sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'atan2', 'sqrt']
-procKeys = ['_error_', '_init_', '_loop_']
+funcKeys = ['sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'atan2', 'sqrt', 'peek', 'pop', 'store']
+procKeys = ['_error_', '_init_', '_loop_', 'push', 'load']
 opKeys   = ['and', 'or', 'not']
 valKeys  = ['true', 'false', 'empty', 'invalid',]
-
 
 ## Streamy Stuff ##
 
