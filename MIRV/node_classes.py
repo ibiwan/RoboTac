@@ -6,12 +6,6 @@ class Type:
 class Operator:
 	PLUS, MINUS, TIMES, DIVIDE = range(4)
 
-class Variable(Indexable):
-	def __init__(self):
-		Indexable.__init__(self)
-		self.type  = None        # Type
-		self.value = None        # Value
-		self.properties = dict() # String-Variable pairs
 
 INIT_PROC   = "__init__"
 ROOT_SCOPES = ["def", "global"]
@@ -160,7 +154,7 @@ class Return(Statement):
 
 ##### TERM TREE #########
 class Term:
-	LITERAL, PREBINDING, INDEXABLE , PREFIXOP= range(3)
+	LITERAL, PREBINDING, INDEXABLE , PREFIXOP= range(4)
 	def __init__(self, kind = LITERAL, value = None):
 		self.kind        = kind # from list
 		self.value       = value   # Value, for literal or expression
@@ -221,3 +215,10 @@ class ActualParam:
 	def __init__(self, name, expr):
 		self.name = name # Idenfifier, optional
 		self.expr = expr # Expression
+
+class Variable(Indexable):
+	def __init__(self):
+		Indexable.__init__(self)
+		self.type  = None        # Type
+		self.value = None        # Value
+		self.properties = dict() # String-Variable pairs

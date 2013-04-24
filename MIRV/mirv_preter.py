@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import lexer, sys
+import node_classes
 
 EOF = "end-of-file"
 sym = None
@@ -9,7 +10,9 @@ sym = None
 
 varTypes = ["INT", "REAL", "ARRAY", "LIST", "STRING", "MATRIX"]
 allTypes = varTypes + ["PROC", "FUNC"]
-scopes   = ["DEF", "GLOBAL", "LET", "LOCAL"]
+locals   = ["LET", "LOCAL"]
+globals  = ["DEF", "GLOBAL"]
+scopes   = locals + globals
 literals = ["INT", "REAL", "STRING"]#, "CHAR", "ARRAY", "MATRIX", "BOOL"]
 funcKeys = ['sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'atan2', 'sqrt', 'peek', 'pop', 'store']
 procKeys = ['_error_', '_init_', '_loop_', 'push', 'load']
@@ -46,30 +49,33 @@ def program():
 	# -> definitions .
 	# FIRST: "scope"
 	# FOLLOW: "end-of-file"
-	definitions()
+	root = node_classes.Program()
+	definitions(root, root)
 
-def definitions():
+def definitions(rootScope, currScope):
 	# -> definition definitions .
 	# -> "epsilon" .
 	# FIRST: "epsilon", "scope"
 	# FOLLOW: "end-of-file"
 	if sym[0] != EOF:
-		definition()
-		definitions()
+		definition(rootScope, currScope)
+		definitions(rootScope, currScope)
 
-def definition():
+def definition(rootScope, currScope):
 	# -> scope deftype .
 	# FIRST: "scope"
 	# FOLLOW: "end-of-file", ";", "scope"
 	scope = consume(scopes, "scope symbol")[0]
-	deftype(scope)
+	deftype(scope, rootScope, currScope)
 
-def deftype(defScope):
+def deftype(defScope, rootScope, currScope):
 	# -> "func" funcdef .
 	# -> "proc" procdef .
 	# -> typename vardef .
 	# FIRST: "func", "typename", "proc"
 	# FOLLOW: "end-of-file", ";", "scope"
+	useScope = currScope if defScope in locals else rootScope
+	print useScope
 	if sym[0] == "FUNC":
 		nextsym()
 		funcdef(defScope)
@@ -147,8 +153,8 @@ def statement():
 	if sym[0] in ["PREBIND", "PREFIXOP", "APPLY", "ID", "LPAREN"] + literals:
 		expression()
 		consume("SEMI", "semicolon")
-	elif sym[0] in scopes:
-		definition() # definitions include their own semicolon if needed
+	elif sym[0] in scopes: # <<FIXME>> definition should take ACTUAL scopes, not None
+		definition(None, None) # definitions include their own semicolon if needed
 	elif sym[0] in ["WHILE", "SET", "RPN", "RETURN", "COND", "CALL"]:
 		kwstmt()
 		consume("SEMI", "semicolon")
