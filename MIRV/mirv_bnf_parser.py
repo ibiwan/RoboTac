@@ -18,7 +18,6 @@ funcKeys = ['sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'atan2', 'sqrt', 'peek'
 procKeys = ['_error_', '_init_', '_loop_', 'push', 'load']
 opKeys   = ['and', 'or', 'not']
 valKeys  = ['true', 'false', 'empty', 'invalid',]
-kwStmts  = ["WHILE", "SET", "RPN", "RETURN", "COND", "CALL"]
 
 ## Streamy Stuff ##
 
@@ -47,53 +46,69 @@ def consume(target, english): # "None" for english when missing symbol is ok
 ### Recursors ###
 
 def program():
-	# -> { definition } .
+	# -> definitions .
 	# FIRST: "scope"
 	# FOLLOW: "end-of-file"
-	while sym[0] != EOF:
-		root = node_classes.Program() # AST
-		definitions(root, root)
+	root = node_classes.Program() # AST
+	definitions(root, root)
+
+def definitions(rootScope, currScope):
+	# -> definition definitions .
+	# -> "epsilon" .
+	# FIRST: "epsilon", "scope"
+	# FOLLOW: "end-of-file"
+	if sym[0] != EOF:
+		definition(rootScope, currScope)
+		definitions(rootScope, currScope)
 
 def definition(rootScope, currScope):
-	# -> scope ( funcDef | procDef | varDef ) .
+	# -> scope deftype .
 	# FIRST: "scope"
 	# FOLLOW: "end-of-file", ";", "scope"
-	defScope = consume(scopes, "scope symbol")[0]
+	scope = consume(scopes, "scope symbol")[0]
+	deftype(scope, rootScope, currScope)
+
+def deftype(defScope, rootScope, currScope):
+	# -> "func" funcdef .
+	# -> "proc" procdef .
+	# -> typename vardef .
+	# FIRST: "func", "typename", "proc"
+	# FOLLOW: "end-of-file", ";", "scope"
 	useScope = currScope if defScope in locals else rootScope
 	if defScope in locals: print "should be local"
 	print useScope
 	if sym[0] == "FUNC":
+		nextsym()
 		funcdef(rootScope, defScope)
 	elif sym[0] == "PROC":
+		nextsym()
 		procdef(rootScope, defScope)
 	elif sym[0] in varTypes:
+		# don't eat type
 		vardef(rootScope, defScope, sym[1])
 	else: error("type specifier")
 
 def funcdef(rootScope, funcScope):
-	# -> "func" typename identifier "(" formalparams ")"  "=" block .
-	# FIRST: "func"
+	# -> typename identifier "(" formalparams ")"  "=" block .
+	# FIRST: "typename"
 	# FOLLOW: "end-of-file", ";", "scope"
-	consume("FUNC", "func")
 	funcReturnType = consume(varTypes, "variable type specifier")[0] # FUNC/PROC handled separately
 	funcName = consume("ID", "identifier")[1]
 	#print "function setup: ", funcScope, funcReturnType, funcName
-	consume("LPAREN", "open paren")
+	consume("LPAREN", "left parenthesis")
 	formalparams()
-	consume("RPAREN", "close paren")
+	consume("RPAREN", "right parenthesis")
 	consume("ASSIGN", "assignment")
 	block(rootScope, funcScope)
 
-
 def procdef(rootScope, procScope):
-	# -> "proc" identifier "(" formalparams ")"  "=" block .
-	# FIRST: "proc"
+	# -> identifier "(" formalparams ")"  "=" block .
+	# FIRST: "identifier"
 	# FOLLOW: "end-of-file", ";", "scope"
-	consume("PROC", "proc")
 	procName = consume("ID", "identifier")[1]
-	consume("LPAREN", "open paren")
+	consume("LPAREN", "left parenthesis")
 	formalparams()
-	consume("RPAREN", "close paren")
+	consume("RPAREN", "right parenthesis")
 	consume("ASSIGN", "assignment")
 	block(rootScope, procScope)
 
@@ -108,14 +123,25 @@ def vardef(rootScope, varScope, varType):
 	consume("SEMI", "semicolon")
 	
 def block(rootScope, currScope):
-	# -> "{" { statement } "}" . 
+	# -> "{" statements "}" . 
 	# FIRST: "{"
 	# FOLLOW: "}", "end-of-file", ";", "scope", "("
-	consume("LBRACE", "open brace")
-	while sym[0] in ["PREBIND", "PREFIXOP", "SET", "LPAREN", "ID", "COND", "CALL", "RPN", \
+	consume("LBRACE", "left curly brace")
+	statements(rootScope, currScope)
+	consume("RBRACE", "right curly brace")
+
+def statements(rootScope, currScope):
+	# -> statement statements .
+	# -> "epsilon" .
+	# FIRST: "prebind", "prefixop", "set", "(", "identifier", "cond", "epsilon", 
+	#        "call", "literal", "scope", "rpn", "return", "apply", "while"
+	# FOLLOW: "}"
+	if sym[0] in ["PREBIND", "PREFIXOP", "SET", "LPAREN", "ID", "COND", "CALL", "RPN", \
 				  "RETURN", "APPLY", "WHILE"] + literals + scopes:
+		# don't eat symbol; we don't use it here
 		statement(rootScope, currScope)
-	consume("RBRACE", "close brace")
+		statements(rootScope, currScope)
+	# epsilon: no "else"
 
 def statement(rootScope, currScope):
 	# -> expression ";" 	FIRST: "prebind", "prefixop", "literal", "apply", "identifier", "("
@@ -129,12 +155,11 @@ def statement(rootScope, currScope):
 		expression()
 		consume("SEMI", "semicolon")
 	elif sym[0] in scopes:
-		definition(rootScope, currScope) 
-		# definitions include their own semicolon if needed
-	elif sym[0] in kwStmts:
+		definition(rootScope, currScope) # definitions include their own semicolon if needed
+	elif sym[0] in ["WHILE", "SET", "RPN", "RETURN", "COND", "CALL"]:
 		kwstmt()
 		consume("SEMI", "semicolon")
-	else: error("statement (expression, definition, or keyword statement)")
+	else: error("statement (expression; or definition; or keyword statement;)")
 
 def expression():
 	# -> term opterm .
@@ -143,10 +168,8 @@ def expression():
 	# check first set 
 	if sym[0] in ["PREBIND", "PREFIXOP", "APPLY", "ID", "LPAREN"] + literals:
 		term()
-		while sym[0] == "INFIXOP":
-			operator = consume("INFIXOP", "infix operator")[1]
-			#print "operator: " + operator
-			expression()
+		opterm()
+	# let term() handle error case(s)
 
 def term():
 	# -> literal               FIRST: "literal"
@@ -156,18 +179,28 @@ def term():
 	# FIRST: "prebind", "prefixop", "literal", "apply", "identifier", "("
 	# FOLLOW: "infixop", "[", ")", ";", ","
 	if sym[0] in literals:
-		type, value = consume(literals, "literal (int, real, string)")
+		literal()
 	elif sym[0] == "PREBIND":
 		prebinding()
 	elif sym[0] == "PREFIXOP":
-		operator = consume("PREFIXOP", "prefix operator")[1]
+		prefixop()
 		expression()
 	elif sym[0] in ["APPLY", "ID", "LPAREN"] :
 		indexable()
-		if consume("LBRACKET", None):
-			expression()
-			consume("RBRACKET", "close bracket")
+		index()
 	else: error("literal, prebinding, or indexable (prefix operator, function application, identifier, or left-paren)")
+
+def opterm():
+	# -> infixop expression opterm .
+	# -> "epsilon"
+	# FIRST: "infixop", "epsilon"
+	# FOLLOW: "infixop", "[", ")", "]", ";", ","
+	if sym[0] == "INFIXOP":
+		operator = consume("INFIXOP", "infix operator")[1]
+		#print "operator: " + operator
+		expression()
+		opterm()
+	# epsilon: no "else"
 
 def indexable():
 	# -> identifier .         FIRST: "identifier"
@@ -176,13 +209,23 @@ def indexable():
 	# FIRST: "apply", "identifier", "("
 	# FOLLOW: "]", "infixop", ";", "[", ")", ","
 	if sym[0] == "ID":
-		name = consume("ID", "identifier")[1])
+		identifier()
 	elif sym[0] == "APPLY":
 		application()
 	elif consume("(", None):
 		expression()
-		consume(")", "close paren")
+		consume(")", "right parenthesis")
 	else: error("indexable (identifier, function application, or left-paren)")
+
+def index():
+	# -> "[" expression "]" .
+	# -> "epsilon" .
+	# FIRST: "epsilon", "["
+	# FOLLOW: "infixop", "[", ")", "]", ";", ","
+	if consume("LBRACKET", None):
+		expression()
+		consume("RBRACKET", "right square bracket")
+	# epsilon: no "else"
 
 def formalparams():
 	# -> typename identifier moreformals .
@@ -213,7 +256,7 @@ def actualparams():
 	# FIRST: "prebind", "prefixop", "(", "identifier", "@", "epsilon", "literal", "apply"
 	# FOLLOW: 
 	if consume("ATSIGN", None):
-		name = consume("ID", "identifier")[1]
+		identifier()
 		consume("ASSIGN", "assignment")
 		expression()
 		moreactuals()
@@ -263,9 +306,9 @@ def actuals():
 	# -> "(" actualparams ")" . 
 	# FIRST: "("
 	# FOLLOW: "infixop", "[", ")", "]", ";", ","
-	consume("LPAREN", "open paren")
+	consume("LPAREN", "left parenthesis")
 	actualparams()
-	consume("RPAREN", "close paren")
+	consume("RPAREN", "right parenthesis")
 
 def kwstmt():
 	# -> "cond" "{" condelements "}" .        FIRST: "cond"
@@ -277,13 +320,13 @@ def kwstmt():
 	# FIRST: "while", "set", "rpn", "return", "cond", "call"
 	# FOLLOW: ";"
 	if consume("COND", None):
-		consume("LBRACE", "open brace")
+		consume("LBRACE", "left curly brace")
 		condelements()
-		consume("RBRACE", "close brace")
+		consume("RBRACE", "right curly brace")
 	elif consume("WHILE", None):
-		consume("LPAREN", "open paren")
+		consume("LPAREN", "left parenthesis")
 		expression()
-		consume("RPAREN", "close paren") 
+		consume("RPAREN", "right parenthesis") 
 		block()
 	elif consume("SET", None):
 		target = consume("ID", "identifier")[1]
@@ -304,7 +347,7 @@ def condelements():
 	# FOLLOW: "}"
 	if consume("LPAREN", None):
 		expression()
-		consume("RPAREN", "close paren")
+		consume("RPAREN", "right parenthesis")
 		block()
 		condelements()
 	# epsilon: no "else"
@@ -370,6 +413,20 @@ def abinding():
 	elif sym[0] in funcKeys:
 		fkwbinding()
 	else: error("identifier or function keyword")
+
+def identifier():
+	# -> "identifier"
+	# FIRST: "identifier"
+	# FOLLOW: "=", "prefixop", "(", ")", "infixop", "[", "]", ";", "fnkw", "identifier", "typename", ","
+	name = consume("ID", "identifier")[1]
+	#print "identifier: \"" + str(name) + "\""
+
+def literal():
+	# -> "literal"
+	# FIRST: "literal"
+	# FOLLOW: "infixop", "[", "_", "]", ";", ","
+	type, value = consume(literals, "literal (int, real, string)")
+	#print "literal of type " + type + " = " + str(value)
 
 
 ## Start It Up! ##
