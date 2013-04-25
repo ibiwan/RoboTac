@@ -6,17 +6,26 @@ class Type:
 class Operator:
 	PLUS, MINUS, TIMES, DIVIDE = range(4)
 
+class Scope:
+	def __init__(self, parent):
+		self.definitions = dict()
+		self.parent = parent # Scope
+	def add(self, name, definition):
+		self.definitions.add(name, definition)
+	def has_key(self, key):
+		return self.definitions.has_key(key)
+
 
 INIT_PROC   = "__init__"
 ROOT_SCOPES = ["def", "global"]
 
 class Program:
 	def __init__(self):
-		self.definitions = dict() # Definition
-	def append(self, name, definition):
-		self.definitions.add(name, definition)
+		self.scope = Scope(None) # Definition
+	def add(self, name, definition):
+		self.scope.add(name, definition)
 	def execute(self):
-		if self.definitions.has_key(INIT_PROC):
+		if self.scope.has_key(INIT_PROC):
 			self.definitions[INIT_PROC].execute()
 		else: print "ERROR: no __init__() procedure found"
 
@@ -31,21 +40,21 @@ class Definition(Statement):
 	def __init__(self, scope, name, encloser, root):
 		Statement.__init__(self)
 		if scope in ROOT_SCOPES:
-			root.append(name, self)
+			root.add(name, self)
 		else:
-			encloser.append(name, self)
+			encloser.add(name, self)
 
 class Procedure(Definition):
 	class FormalParam:
 		def __init__(self, type, name):
 			self.type = type # Type
 			self.name = type # Identifier
-	def __init__(self, scope, name, encloser, root):
-		Definition.__init__(self, scope, name, encloser, root)
+	def __init__(self, scope, name, encloser):
+		Definition.__init__(self, scope, name, encloser)
 		self.formalparams = []       # FormalParam
 		self.block        = []       # Statement
 		self.encloser     = encloser # Program, Procedure, or Function
-		self.definitions  = dict()   # Definition
+		self.scope        = Scope(encloser)  # Definition
 	def addParam(self, type, name):
 		self.formalparams.append(FormalParam(type, name))
 	def addStmt(self, statement):

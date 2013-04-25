@@ -1,18 +1,14 @@
 def proc myproc () = { 1 - 2 - 3; }
-
 def func real somefunc (int x, real y) = 
 { // blagh
 	def int z = 7; 
 	set z = x * 2; // blargh
  	return x + y;
 } 
-
-let real x = 5.7;
-
 local proc myproc () = {
-	set x = 'pu""rple';
+	let real x = 5.7;
+	set x = 'pu""rple'; // should error once type checking is in place
 }
-
 foo = 5 * 30; bar = bar - 60.6; 7.>>
 let x = .5;
 x + x - x -- @x "som'e str\ing" ++ x / x "some ot\\her\\\\\ string\\" * x ** x 
