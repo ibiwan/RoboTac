@@ -46,19 +46,20 @@ def consume(target, english): # "None" for english when missing symbol is ok
 
 ### Recursors ###
 
+# FIRST: "scope"
+# FOLLOW: "end-of-file"
 def program():
+	root = node_classes.Program() # AST
 	# -> { definition } .
-	# FIRST: "scope"
-	# FOLLOW: "end-of-file"
 	while sym[0] != EOF:
-		root = node_classes.Program() # AST
 		definition(root, root)
 
+# FIRST: "scope"
+# FOLLOW: "prebind", "prefixop", "set", "(", "cond", "tcall", "literal", "scope", 
+#         "return", "apply", "while", "end-of-file", "identifier", "}", "rpn", "call"
 def definition(rootScope, currScope):
 	# -> scope ( funcDef | procDef | varDef ) .
-	# FIRST: "scope"
-	# FOLLOW: "end-of-file", ";", "scope"
-	defScope = consume(scopes, "scope symbol")[0]
+	defScope = consume(scopes, "scope")[0]
 	useScope = currScope if defScope in locals else rootScope
 	if defScope in locals: print "should be local"
 	print useScope
@@ -70,10 +71,11 @@ def definition(rootScope, currScope):
 		vardef(rootScope, defScope, sym[1])
 	else: error("type specifier")
 
+# FIRST: "func"
+# FOLLOW: "prebind", "prefixop", "set", "(", "cond", "tcall", "literal", "scope", 
+#         "return", "apply", "while", "end-of-file", "identifier", "}", "rpn", "call"
 def funcdef(rootScope, funcScope):
 	# -> "func" typename identifier formalparams "(" "=" ")" block .
-	# FIRST: "func"
-	# FOLLOW: "end-of-file", ";", "scope"
 	consume("FUNC", "func")
 	funcReturnType = consume(varTypes, "variable type specifier")[0] # FUNC/PROC handled separately
 	funcName = consume("ID", "identifier")[1]
@@ -84,11 +86,11 @@ def funcdef(rootScope, funcScope):
 	consume("ASSIGN", "assignment")
 	block(rootScope, funcScope)
 
-
+# FIRST: "proc"
+# FOLLOW: "prebind", "prefixop", "set", "(", "cond", "tcall", "literal", "scope", 
+#         "return", "apply", "while", "end-of-file", "identifier", "}", "rpn", "call"
 def procdef(rootScope, procScope):
 	# -> "proc" identifier "(" formalparams ")" =" block .
-	# FIRST: "proc"
-	# FOLLOW: "end-of-file", ";", "scope"
 	consume("PROC", "proc")
 	procName = consume("ID", "identifier")[1]
 	consume("LPAREN", "open paren")
@@ -97,53 +99,74 @@ def procdef(rootScope, procScope):
 	consume("ASSIGN", "assignment")
 	block(rootScope, procScope)
 
+# FIRST: "typename"
+# FOLLOW: "prebind", "prefixop", "set", "(", "cond", "tcall", "literal", "scope", 
+#         "return", "apply", "while", "end-of-file", "identifier", "}", "rpn", "call"
 def vardef(rootScope, varScope, varType):
 	# -> typename identifier "=" expression ";" . 
-	# FIRST: "typename"
-	# FOLLOW: "end-of-file", ";", "scope"
 	varType = consume(varTypes, "variable type specifier")[0]
 	varName = consume("ID", "identifier")[1]
 	consume("ASSIGN", "assignment")
 	expression()
 	consume("SEMI", "semicolon")
 	
+# FIRST: "{"
+# FOLLOW: "prebind", "prefixop", "set", "(", "cond", "tcall", "literal", "scope",  
+#         "return", "apply", "while", "identifier", "}", "rpn", "call", "end-of-file"
 def block(rootScope, currScope):
 	# -> "{" { statement } "}" . 
-	# FIRST: "{"
-	# FOLLOW: "}", "end-of-file", ";", "scope", "("
 	consume("LBRACE", "open brace")
 	while sym[0] in ["PREBIND", "PREFIXOP", "SET", "LPAREN", "ID", "COND", "CALL", "RPN", \
 				  "RETURN", "APPLY", "WHILE"] + literals + scopes:
 		statement(rootScope, currScope)
 	consume("RBRACE", "close brace")
 
+# FIRST: "prebind", "prefixop", "set", "(", "identifier", "cond", 
+#        "call", "tcall", "literal", "scope", "rpn", "return", "apply", "while"
+# FOLLOW: "prebind", "prefixop", "set", "apply", "(", "cond", "}", "while", 
+#         "literal", "scope", "rpn", "return", "identifier", "call", "tcall"
 def statement(rootScope, currScope):
-	# -> expression ";" 	FIRST: "prebind", "prefixop", "literal", "apply", "identifier", "("
-	# -> definition      	FIRST: "scope"
-	# -> "while" while_s .  FIRST: "while"
-	# -> kwstmt ";" 		FIRST: "set", "rpn", "return", "cond", "call"
-	# FIRST: "prebind", "prefixop", "set", "(", "identifier", "cond", 
-	#        "call", "literal", "scope", "rpn", "return", "apply", "while"
-	# FOLLOW: "prebind", "prefixop", "set", "apply", "(", "cond", "}", "while", 
-	#         "literal", "scope", "rpn", "return", "identifier", "call"
-	if sym[0] in ["PREBIND", "PREFIXOP", "APPLY", "ID", "LPAREN"] + literals:
-		expression()
-		consume("SEMI", "semicolon")
-	elif sym[0] in scopes:
+	# -> definition                            FIRST: "scope"
+	if sym[0] in scopes:
 		definition(rootScope, currScope) 
-		# definitions include their own semicolon if needed
+		# ends with block, not semicolon
+	# -> "while" while_s .                     FIRST: "while"
 	elif sym[0] == "WHILE":
 		while_s()
-	elif sym[0] in kwStmts:
-		kwstmt(rootScope, currScope)
+		# ends with block, not semicolon
+	# -> "cond" cond .                         FIRST: "cond"
+	elif sym[0] == "COND":
+		cond(rootScope, currScope)
+		# ends with block, not semicolon
+	# -> expression ";" .                      FIRST: "prebind", "prefixop", "literal", "apply", "identifier", "("
+	elif sym[0] in ["PREBIND", "PREFIXOP", "APPLY", "ID", "LPAREN"] + literals:
+		expression()
 		consume("SEMI", "semicolon")
-	else: error("statement (expression, definition, or keyword statement)")
+	# -> ( "call" | "tcall" ) cbinding ";" .   FIRST: "call", "tcall"
+	elif sym[0] in ["CALL", "TCALL"]:
+		call()
+		consume("SEMI", "semicolon")
+	# -> "set" identifier "=" expression ";" . FIRST: "set"
+	elif consume("SET", None):
+		target = consume("ID", "identifier")[1]
+		consume("ASSIGN", "assignment")
+		expression()
+		consume("SEMI", "semicolon")
+	# -> "rpn" rpnelements ";" .               FIRST: "rpn"
+	elif consume("RPN", None):
+		while sym[0] in ["INFIXOP", "PREFIXOP", "ID"] + funcKeys + opKeys:
+			rpnelement()
+		consume("SEMI", "semicolon")
+	# -> "return" expression ";" .             FIRST: "return"
+	elif consume("RETURN", None):
+		expression()
+		consume("SEMI", "semicolon")
+	else: error("statement (while, expression, definition, or keyword statement)")
 
+# FIRST: "prebind", "prefixop", "literal", "apply", "identifier", "("
+# FOLLOW: "infixop", "[", ")", "]", ";", ","
 def expression():
-	# -> term opterm .
-	# FIRST: "prebind", "prefixop", "literal", "apply", "identifier", "("
-	# FOLLOW: "infixop", "[", ")", "]", ";", ","
-	# check first set 
+	# -> term { "infixop" expression } .
 	if sym[0] in ["PREBIND", "PREFIXOP", "APPLY", "ID", "LPAREN"] + literals:
 		term()
 		while sym[0] == "INFIXOP":
@@ -151,101 +174,84 @@ def expression():
 			#print "operator: " + operator
 			expression()
 
+# FIRST: "prebind", "prefixop", "literal", "apply", "identifier", "("
+# FOLLOW: "infixop", "[", ")", "]", ";", ","
 def term():
 	# -> literal               FIRST: "literal"
-	# -> prebinding .          FIRST: "prebind"
-	# -> prefixop expression . FIRST: "prefixop"
-	# -> indexable index .     FIRST: "apply", "identifier", "("
-	# FIRST: "prebind", "prefixop", "literal", "apply", "identifier", "("
-	# FOLLOW: "infixop", "[", ")", ";", ","
-	if sym[0] in literals:
+	if sym[0] in literals: # array literals not supported: never indexable
 		type, value = consume(literals, "literal (int, real, string)")
-	elif sym[0] == "PREBIND":
+	# -> prebinding .          FIRST: "prebind"
+	elif sym[0] == "PREBIND": # prebind only returns subroutines: never indexable
 		binding()
-	elif sym[0] == "PREFIXOP":
-		operator = consume("PREFIXOP", "prefix operator")[1]
-		expression()
-	elif sym[0] in ["APPLY", "ID", "LPAREN"] :
+	# -> indexable index .     FIRST: "prefixop", "apply", "identifier", "("
+	elif sym[0] in ["PREFIXOP", "APPLY", "ID", "LPAREN"] :
 		indexable()
 		if consume("LBRACKET", None):
 			expression()
 			consume("RBRACKET", "close bracket")
 	else: error("literal, prebinding, or indexable (prefix operator, function application, identifier, or left-paren)")
 
+# FIRST: "apply", "prefixop", "identifier", "("
+# FOLLOW: "]", "infixop", ";", "[", ")", ","
 def indexable():
 	# -> identifier .         FIRST: "identifier"
-	# -> application .        FIRST: "apply"
-	# -> "(" expression ")" . FIRST: "("
-	# FIRST: "apply", "identifier", "("
-	# FOLLOW: "]", "infixop", ";", "[", ")", ","
-	if sym[0] == "ID":
+	if sym[0] == "ID": # identifier could refer to an array
 		name = consume("ID", "identifier")[1]
-	elif sym[0] == "APPLY":
+	# -> application .        FIRST: "apply"
+	elif sym[0] == "APPLY": # function could return an array
 		application()
-	elif consume("(", None):
+	# -> prefixop expression . FIRST: "prefixop"
+	elif sym[0] == "PREFIXOP": # could "pop x" to retrieve an array from the stack
+		operator = consume("PREFIXOP", "prefix operator")[1]
+		expression()
+	# -> "(" expression ")" . FIRST: "("
+	elif consume("(", None): # expression could evaluate to an array
 		expression()
 		consume(")", "close paren")
 	else: error("indexable (identifier, function application, or left-paren)")
 
-def formalparams():
+# FIRST: "typename", "epsilon"
+# FOLLOW: ")"
+def formalparams(mandatory = False):
 	# -> [ "typename" identifier [ "," formalparams ] ] .
-	# FIRST: "typename"
-	# FOLLOW: 
-	if paramType = consume(allTypes, None)[0]:
+	if sym[0] in allTypes:
+		paramType = consume(allTypes, None)[0]
 		paramName = consume("ID", "identifier")[1]
 		if consume("COMMA", None):
-			formalparams()
+			formalparams(True)
+	elif mandatory: # no trailing commas
+		error("typename")
 
-def actualparams():
+# FIRST: "@", "prebind", "prefixop", "apply", "identifier", "(", "literal", "epsilon"
+# FOLLOW: ")"
+def actualparams(mandatory = False):
 	# -> [ [ "@" identifier "=" ] expression [ "," actualparams ] ] .
-	# FIRST: "@", "prebind", "prefixop", "apply", "identifier", "(", "literal"
-	# FOLLOW: 
 	if sym[0] in ["PREBIND", "PREFIXOP", "APPLY", "ID", "LPAREN", "ATSIGN"] + literals:
 		if consume("ATSIGN", None):
 			name = consume("ID", "identifier")[1]
 			consume("ASSIGN", "assignment")
 		expression()
 		if consume("COMMA", None):
-			actualparams()
+			actualparams(True)
+	elif mandatory: # no trailing commas
+		error("prebind, prefixop, application, identifier, left paren, binding (@), or literal")
 
+# FIRST: "prebind"
+# FOLLOW: "]", "infixop", ";", ")", ","
 def prebinding():
 	# -> "prebind" identifier "(" actualparams ")" . 
-	# FIRST: "identifier"
-	# FOLLOW: "]", "infixop", "[", ";", ")", ","
 	consume("PREBIND", "prebind")
 	name = consume("ID", "identifier")[1]
 	consume("LPAREN", "open paren")
 	actualparams()
 	consume("RPAREN", "close paren")
 
-def kwstmt(rootScope, currScope):
-	# -> "cond" cond .        FIRST: "cond"
-	# -> "set" identifier "=" expression .    FIRST: "set"
-	# -> "rpn" rpnelements .                  FIRST: "rpn"
-	# -> "call" cbinding .                    FIRST: "call"
-	# -> "return" expression .                FIRST: "return"
-	# FIRST: "set", "rpn", "return", "cond", "call"
-	# FOLLOW: ";"
-	if sym[0] == "COND":
-		cond(rootScope, currScope)
-	elif consume("SET", None):
-		target = consume("ID", "identifier")[1]
-		consume("ASSIGN", "assignment")
-		expression()
-	elif consume("RPN", None):
-		while sym[0] in ["INFIXOP", "PREFIXOP", "ID"] + funcKeys + opKeys:
-			rpnelement()
-	elif sym[0] in ["CALL", "TCALL"]:
-		call()
-	elif consume("RETURN", None):
-		expression()
-	else: error("keyword (cond, while, set, rpn, call, return)")
-
+# FIRST: "cond"
+# FOLLOW: "prebind", "prefixop", "set", "(", "cond", "tcall", "literal", "scope",  
+#         "return", "apply", "while", "identifier", "}", "rpn", "call" 
 def cond(rootScope, currScope):
-	# -> "cond" "{" condelements "}" .        FIRST: "cond"
-	# FIRST: "cond"
-	# FOLLOW: ";"
-	consume("COND", "cond"):
+	# -> "cond" "{" { ( expression ) block } "}" .        
+	consume("COND", "cond")
 	consume("LBRACE", "open brace")
 	while consume("LPAREN", None):
 		expression()
@@ -253,43 +259,44 @@ def cond(rootScope, currScope):
 		block(rootScope, currScope)
 	consume("RBRACE", "close brace")
 
+# FIRST: "while"
+# FOLLOW: "prebind", "prefixop", "set", "(", "cond", "tcall", "literal", "scope",  
+#         "return", "apply", "while", "identifier", "}", "rpn", "call" 
 def while_s(rootScope, curreScope):
 	# -> "while" "(" expression ")" block
-	# FIRST: "while"
-	# FOLLOW: 
 	consume("LPAREN", "open paren")
 	expression()
 	consume("RPAREN", "close paren") 
 	block(rootScope, currScope)
 
+# FIRST: "infixop", "prefixop", "fnkw", "identifier", "opkw", "literal"
+# FOLLOW: "infixop", "prefixop", "fnkw", "identifier", "opkw", "literal", ";"
 def rpnelement():
 	# -> identifier .
-	# -> infixop .
-	# -> prefixop .
-	# -> fnkw .
-	# -> opkw .
-	# -> literal .
-	# FIRST: "infixop", "prefixop", "fnkw", "identifier", "opkw", "literal"
-	# FOLLOW: "infixop", "prefixop", "fnkw", "identifier", "opkw", "literal", ";"
 	if sym[0] == "ID":
 		name = consume("ID", None)[1]
+	# -> infixop .
 	elif sym[0] == "INFIXOP":
 		operator = consume("INFIXOP", None)[1]
+	# -> prefixop .
 	elif sym[0] == "PREFIXOP":
 		operator = consume("PREFIXOP", None)[1]
+	# -> fnkw .
 	elif sym[0] in funcKeys:
 		function = consume(funcKeys, None)[0]
+	# -> opkw .
 	elif sym[0] in opKeys:
 		operator = consume(opKeys, None)[0]
+	# -> literal .
 	elif sym[0] in literals:
 		type, value = consume(literals, None)
 	else: error("operator, function, variable, or literal value")
 
+# FIRST: "call", "tcall"
+# FOLLOW: "prebind", "prefixop", "set", "(", "cond", "tcall", "literal", "scope",  
+#         "return", "apply", "while", "identifier", "}", "rpn", "call" 
 def call():
 	# -> ( "call" | "tcall" ) ( identifier | prockw )  "(" actualparams ")" .
-	# -> "prockw" actualparams .
-	# FIRST: "identifier", "prockw"
-	# FOLLOW: ";"
 	consume(["CALL", "TCALL"], "call or tail-call")
 	if sym[0] == "ID":
 		name = consume("ID", "identifier")[1]
@@ -300,10 +307,10 @@ def call():
 	actualparams()
 	consume("RPAREN", "close paren")
 
+# FIRST: "apply"
+# FOLLOW: "]", "infixop", ";", "[", ")", ","
 def application():
 	# -> "apply" ( fnkw | identifier )  "(" actualparams ")" .
-	# FIRST: "apply"
-	# FOLLOW: "]", "infixop", ";", "[", ")", ","
 	consume("APPLY", "apply")
 	if sym[0] == "ID":
 		name = consume("ID", "identifier")[1]
