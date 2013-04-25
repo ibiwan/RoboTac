@@ -70,7 +70,7 @@ def FIRST(symbol):
 	return grammar[symbol].first_set
 
 def FOLLOW(symbol):
-	if symbol == epsilon or not symbol in grammar:  return set()
+	if symbol == epsilon or not symbol in grammar: return set()
 	return grammar[symbol].follow_set
 
 def UnifyFollowSets(syma, setb):
@@ -145,7 +145,9 @@ print "FIRST SETS:"
 symbols = grammar.keys()
 symbols.sort()
 for symbol in symbols:
-	print "FS<" + symbol + ">:" + " "*(20 - len(symbol)) + str(FIRST(symbol))
+	firsts = list(FIRST(symbol))
+	firsts.sort()
+	print "FS<" + symbol + ">:" + " "*(20 - len(symbol)) + str(firsts)
 
 ## A. Make sure all First Sets of productions for a given symbol are disjoint
 for symbol in grammar.keys():
@@ -181,10 +183,10 @@ while changesMade:
 			k = len(prod)
 			for i in range(k):
 				if i == k-1 or AllNullable(prod[i+1:k]):
-					changesMade = UnifyFollowSets(prod[i], FOLLOW(symbol))
+					changesMade = UnifyFollowSets(prod[i], FOLLOW(symbol)) or changesMade
 				for j in range(i+1, k):
 					if i + 1 == j or AllNullable(prod[i+1:j]):
-						changesMade = UnifyFollowSets(prod[i], FIRST(prod[j]) - set([epsilon]))
+						changesMade = UnifyFollowSets(prod[i], FIRST(prod[j]) - set([epsilon])) or changesMade
 						
 ## Print Follow Sets
 print "FOLLOW SETS:"
@@ -192,5 +194,7 @@ symbols = grammar.keys()
 symbols.sort()
 for symbol in symbols:
 	if grammar[symbol].follow_set:
-		print "FolS<" + symbol + ">:" + " "*(18 - len(symbol)) + str(FOLLOW(symbol))
+		fols = list(FOLLOW(symbol))
+		fols.sort()
+		print "FolS<" + symbol + ">:" + " "*(16 - len(symbol)) + str(fols)
 
