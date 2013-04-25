@@ -147,7 +147,7 @@ symbols.sort()
 for symbol in symbols:
 	firsts = list(FIRST(symbol))
 	firsts.sort()
-	print "FS<" + symbol + ">:" + " "*(20 - len(symbol)) + str(firsts)
+	print "FS<" + symbol + ">:" + " "*(20 - len(symbol)) + str([x[1:-1] for x in firsts])
 
 ## A. Make sure all First Sets of productions for a given symbol are disjoint
 for symbol in grammar.keys():
@@ -196,5 +196,5 @@ for symbol in symbols:
 	if grammar[symbol].follow_set:
 		fols = list(FOLLOW(symbol))
 		fols.sort()
-		print "FolS<" + symbol + ">:" + " "*(16 - len(symbol)) + str(fols)
+		print "FolS<" + symbol + ">:" + " "*(16 - len(symbol)) + str([x[1:-1] for x in fols])
 
