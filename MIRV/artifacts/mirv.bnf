@@ -5,13 +5,13 @@ definitions  -> "epsilon" .
 
 definition   -> scope deftype .
 
-deftype      -> "func" funcdef .
-deftype      -> "proc" procdef .
+deftype      -> funcdef .
+deftype      -> procdef .
 deftype      -> vardef .
 
-funcdef      -> typename identifier "(" formalparams ")"  "=" block .
+funcdef      -> "func" typename identifier "(" formalparams ")"  "=" block .
 
-procdef      -> identifier "(" formalparams ")"  "=" block .
+procdef      -> "proc" identifier "(" formalparams ")"  "=" block .
 
 vardef       -> typename identifier "=" expression ";". 
 
@@ -20,9 +20,14 @@ block        -> "{" statements "}" .
 statements   -> statement statements .
 statements   -> "epsilon" .
 
-statement    -> expression ";" .
 statement    -> definition .
-statement    -> kwstmt ";" .
+statement    -> while .
+statement    -> cond .
+statement    -> expression ";" .
+statement    -> call .
+statement    -> "set" identifier "=" expression ";" .
+statement    -> "rpn" rpnelements ";" . 
+statement    -> "return" expression ";" . 
 
 expression   -> term opterm .
 
@@ -31,21 +36,28 @@ opterm       -> "epsilon" .
 
 term         -> literal .
 term         -> prebinding .
-term         -> prefixop expression .
 term         -> indexable index .
+
+indexable    -> identifier .
+indexable    -> prefixop expression .
+indexable    -> application .
+indexable    -> "(" expression ")" .
 
 index        -> "[" expression "]" .
 index        -> "epsilon" .
 
-indexable    -> identifier .
-indexable    -> application .
-indexable    -> "(" expression ")" .
+application  -> "apply" abinding .
+
+call         -> "call" cbinding ";" .
+call         -> "tcall" cbinding ";" .
 
 formalparams -> typename identifier moreformals .
 formalparams -> "epsilon" .
 
 moreformals  -> "," formalparams .
 moreformals  -> "epsilon" .
+
+actuals      -> "(" actualparams ")" . 
 
 actualparams -> "@" identifier "=" expression moreactuals .
 actualparams -> expression moreactuals .
@@ -58,19 +70,15 @@ prebinding   -> "prebind" binding .
 
 binding      -> identifier actuals . 
 
-fkwbinding   -> fnkw actuals . 
+cbinding     -> binding .
+cbinding     -> prockw actuals .
 
-pkwbinding   -> prockw actuals . 
+abinding     -> binding .
+abinding     -> fnkw actuals .
 
-actuals      -> "(" actualparams ")" . 
+while        -> "while" "(" expression ")" block .
 
-kwstmt       -> "cond" "{" condelements "}" .
-kwstmt       -> "while" "(" expression ")" block .
-kwstmt       -> "set" identifier "=" expression .
-kwstmt       -> "rpn" rpnelements . 
-kwstmt       -> "call" cbinding .
-kwstmt       -> "tcall" cbinding .
-kwstmt       -> "return" expression . 
+cond         -> "cond" "{" condelements "}" .
 
 condelements -> "(" expression ")" block condelements .
 condelements -> "epsilon" .
@@ -84,14 +92,6 @@ rpnelement   -> prefixop .
 rpnelement   -> fnkw .
 rpnelement   -> opkw .
 rpnelement   -> literal .
-
-cbinding     -> binding .
-cbinding     -> pkwbinding .
-
-application  -> "apply" abinding .
-
-abinding     -> binding .
-abinding     -> fkwbinding .
 
 typename     -> "typename" .
 
