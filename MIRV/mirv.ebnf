@@ -2,20 +2,34 @@ program      -> { definition } .
 
 definition   -> "scope" ( funcdef | procdef | vardef ) .
 
-funcdef      -> "func" "typename" "identifier" "(" [ formalparams ] ")"  "=" "{" { statement } "}" .
+funcdef      -> "func" "typename" "identifier" "(" [ formalparams ] ")"  "=" block .
 
-procdef      -> "proc" "identifier" "(" [ formalparams ] ")"  "=" "{" { statement } "}" .
+procdef      -> "proc" "identifier" "(" [ formalparams ] ")"  "=" block .
 
 vardef       -> "typename" "identifier" "=" expression ";". 
 
+formalparams -> "typename" "identifier" [ "," formalparams ] .
+
+block        -> "{" { statement } "}"
+
 statement    -> definition 
-			  | while
               | cond
-              | expression ";" 
+              | while
               | call ";" 
-              | "set" "identifier" "=" expression ";" 
               | "rpn" { rpnelement } ";" 
+              | expression ";" 
+              | "set" "identifier" "=" expression ";" 
               | "return" expression  ";" .
+
+cond         -> "cond" "{" { "(" expression ")" block .
+
+while_s      -> "while" "(" expression ")" block .
+
+call         -> ( "tcall" | "call" ) ( "identifier" | "prockw" ) "(" [ actualparams ] ")" .
+
+rpnelement   -> "identifier" | "infixop" | "prefixop" | "fnkw" | "opkw" | "literal" . 
+
+actualparams -> [ "@" "identifier" "=" ] expression [ "," actualparams ] .
 
 expression   -> term { "infixop" expression } .
 
@@ -23,21 +37,9 @@ term         -> "literal"
               | prebinding
               | indexable [ "[" expression "]" ] .
 
+prebinding   -> "prebind" "identifier" "(" actualparams ")" .
+
 indexable    -> "identifier" 
               | "prefixop" expression 
               | "apply" ( "identifier" | "fnkw" ) "(" [ actualparams ] ")" 
               | "(" expression ")" .
-
-formalparams -> "typename" "identifier" [ "," formalparams ] .
-
-actualparams -> [ "@" "identifier" "=" ] expression [ "," actualparams ] .
-
-prebinding   -> "prebind" "identifier" "(" actualparams ")" .
-
-cond        -> "cond" "{" { "(" expression ")" "{" { statement } "}" } "}" .
-
-while_s     -> "while" "(" expression ")" "{" { statement } "}" .
-
-rpnelement  -> "identifier" | "infixop" | "prefixop" | "fnkw" | "opkw" | "literal" . 
-
-call        -> ( "tcall" | "call" ) ( "identifier" | "prockw" ) "(" [ actualparams ] ")" .
