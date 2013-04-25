@@ -9,16 +9,22 @@ procdef      -> "proc" "identifier" "(" [ formalparams ] ")"  "=" "{" { statemen
 vardef       -> "typename" "identifier" "=" expression ";". 
 
 statement    -> definition 
-              | ( expression | cond | while | set | rpn | call | return ) ";" .
+			  | while
+              | cond
+              | expression ";" 
+              | call ";" 
+              | "set" "identifier" "=" expression ";" 
+              | "rpn" { rpnelement } ";" 
+              | "return" expression  ";" .
 
 expression   -> term { "infixop" expression } .
 
 term         -> "literal" 
-              | prebinding 
-              | "prefixop" expression 
+              | prebinding
               | indexable [ "[" expression "]" ] .
 
 indexable    -> "identifier" 
+              | "prefixop" expression 
               | "apply" ( "identifier" | "fnkw" ) "(" [ actualparams ] ")" 
               | "(" expression ")" .
 
@@ -30,12 +36,8 @@ prebinding   -> "prebind" "identifier" "(" actualparams ")" .
 
 cond        -> "cond" "{" { "(" expression ")" "{" { statement } "}" } "}" .
 
-while       -> "while" "(" expression ")" "{" { statement } "}" .
+while_s     -> "while" "(" expression ")" "{" { statement } "}" .
 
-set         -> "set" "identifier" "=" expression .
-
-rpn         -> "rpn" { "identifier" | "infixop" | "prefixop" | "fnkw" | "opkw" | "literal" } . 
+rpnelement  -> "identifier" | "infixop" | "prefixop" | "fnkw" | "opkw" | "literal" . 
 
 call        -> ( "tcall" | "call" ) ( "identifier" | "prockw" ) "(" [ actualparams ] ")" .
-
-return      -> "return" expression . 
