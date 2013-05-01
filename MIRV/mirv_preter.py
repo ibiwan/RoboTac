@@ -53,11 +53,12 @@ def getRootScope(currScope):
 # FIRST: "scope"
 # FOLLOW: "end-of-file"
 def program():
-	root = node_classes.Program() # AST
-	#print "root scope is " + str(root.scope)
+	ast = node_classes.Program()
+	#print "root scope is " + str(ast.scope)
 	# -> { definition } .
 	while sym[0] != EOF:
-		definition(root.scope)
+		definition(ast.scope)
+	return ast
 
 # FIRST: "scope"
 # FOLLOW: = FOLLOW(statement) + 'end-of-file'
@@ -81,12 +82,13 @@ def funcdef(funcScope):
 	consume("FUNC", "func")
 	funcReturnType = consume(varTypes, "variable type specifier")[0] # FUNC/PROC handled separately
 	funcName = consume("ID", "identifier")[1]
+	func = node_classes.Function(funcReturnType, funcName, funcScope)
 	#print "function setup: ", funcScope, funcReturnType, funcName
 	consume("LPAREN", "open paren")
-	formalparams()
+	formalparams(func)
 	consume("RPAREN", "close paren")
 	consume("ASSIGN", "assignment")
-	block(funcScope)
+	block(funcScope, func.block)
 
 # FIRST: "proc"
 # FOLLOW: = FOLLOW(statement) + 'end-of-file'
@@ -94,11 +96,13 @@ def procdef(procScope):
 	# -> "proc" identifier "(" formalparams ")" =" block .
 	consume("PROC", "proc")
 	procName = consume("ID", "identifier")[1]
+	#print procScope
+	proc = node_classes.Procedure(procName, procScope)
 	consume("LPAREN", "open paren")
-	formalparams()
+	formalparams(proc)
 	consume("RPAREN", "close paren")
 	consume("ASSIGN", "assignment")
-	block(procScope)
+	block(procScope, proc.block)
 
 # FIRST: "typename"
 # FOLLOW: = FOLLOW(statement) + 'end-of-file'
@@ -106,25 +110,26 @@ def vardef(varScope, varType):
 	# -> typename identifier "=" expression ";" . 
 	varType = consume(varTypes, "variable type specifier")[0]
 	varName = consume("ID", "identifier")[1]
+	var = node_classes.Variable(varName, varType, varScope)
 	consume("ASSIGN", "assignment")
 	expression(varScope)
 	consume("SEMI", "semicolon")
-	
+
 # FIRST: "{"
 # FOLLOW: = FOLLOW(statement) + 'end-of-file'
-def block(currScope):
+def block(encloser, stmtlist):
 	# -> "{" { statement } "}" . 
 	consume("LBRACE", "open brace")
-	newScope = node_classes.Scope(currScope)
-	while sym[0] in ["PREBIND", "PREFIXOP", "SET", "LPAREN", "ID", "COND", "CALL", "RPN", \
-				  "RETURN", "APPLY", "WHILE"] + literals + scopes:
-		statement(newScope)
+	inner = node_classes.Scope(encloser)
+	while sym[0] in ["PREBIND", "PREFIXOP", "SET", "LPAREN", "ID", "COND", "CALL", \
+	                 "RPN", "RETURN", "APPLY", "WHILE"] + literals + scopes:
+		statement(encloser, stmtlist)
 	consume("RBRACE", "close brace")
 
 # FIRST: '(', 'apply', 'call', 'cond', 'identifier', 'literal', 'prebind', 
 #        'prefixop', 'return', 'rpn', 'scope', 'set', 'tcall', 'while''
 # FOLLOW: = FIRST(statement) + '}'
-def statement(currScope):
+def statement(currScope, stmtlist):
 	# -> definition                            FIRST: "scope"
 	if sym[0] in scopes:
 		definition(currScope) 
@@ -210,13 +215,14 @@ def indexable(currScope):
 
 # FIRST: 'epsilon', 'typename'
 # FOLLOW: ')'
-def formalparams(mandatory = False):
+def formalparams(subr, mandatory = False):
 	# -> [ "typename" identifier [ "," formalparams ] ] .
 	if sym[0] in allTypes:
 		paramType = consume(allTypes, None)[0]
 		paramName = consume("ID", "identifier")[1]
+		subr.addParam(paramType, paramName)
 		if consume("COMMA", None):
-			formalparams(True)
+			formalparams(subr, True)
 	elif mandatory: # no trailing commas
 		error("typename")
 
@@ -322,4 +328,5 @@ def application(currScope):
 lex = lexer.lexer(sys.stdin) # create token generator
 nextsym() # initialize sym
 print;print
-program() # start parsing at the start symbol
+ast = program() # start parsing at the start symbol
+print str(ast)

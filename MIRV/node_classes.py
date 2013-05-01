@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import sys
 
 class Type:
 	INT, REAL, STRING, ARRAY = range(4)
@@ -11,10 +12,32 @@ class Scope:
 		self.definitions = dict()
 		self.parent = parent # Scope
 	def add(self, name, definition):
-		self.definitions.add(name, definition)
+		print "adding to scope"
+		if self.definitions.has_key(name):
+			print "attempting to re-define name \"" + name + "\""
+			sys.exit("re-defining?  I'm outta here")
+		self.definitions[name] = definition
 	def has_key(self, key):
 		return self.definitions.has_key(key)
+	def __getitem__(self, item):
+		return self.definitions[item]
+	def __str__(self):
+		ret = "Scope: "
+		ret += str(len(self.definitions)) + " items defined:\n"
+		for defn in self.definitions:
+			ret += str(defn) + " is a...\n" + str(self.definitions[defn])
+		return ret
 
+class Block:
+	def __init__(self):
+		self.statements = []
+	def add(self, statement):
+		self.statements.append(statement)
+	def __str__(self):
+		ret = "Block:\n"
+		for stmt in self.statements:
+			ret += stmt
+		return ret
 
 INIT_PROC   = "__init__"
 ROOT_SCOPES = ["def", "global"]
@@ -23,11 +46,16 @@ class Program:
 	def __init__(self):
 		self.scope = Scope(None) # Definition
 	def add(self, name, definition):
+		print "adding to program"
 		self.scope.add(name, definition)
 	def execute(self):
 		if self.scope.has_key(INIT_PROC):
-			self.definitions[INIT_PROC].execute()
+			self.scope[INIT_PROC].execute()
 		else: print "ERROR: no __init__() procedure found"
+	def __str__(self):
+		ret = "Program:\n"
+		ret += str(self.scope)
+		return ret
 
 ##### STMT TREE #########
 class Statement:
@@ -35,41 +63,60 @@ class Statement:
 		pass # child-defined
 	def execute(self):
 		pass # ditto
+	def __str__(self):
+		ret = "Statement:\n"
+		return ret
 
 class Definition(Statement):
-	def __init__(self, scope, name, encloser, root):
+	def __init__(self, name, context):
 		Statement.__init__(self)
-		if scope in ROOT_SCOPES:
-			root.add(name, self)
-		else:
-			encloser.add(name, self)
+		context.add(name, self)
+	def __str__(self):
+		ret = "Definition:\n"
+		return ret
 
 class Procedure(Definition):
 	class FormalParam:
 		def __init__(self, type, name):
 			self.type = type # Type
-			self.name = type # Identifier
-	def __init__(self, scope, name, encloser):
-		Definition.__init__(self, scope, name, encloser)
+			self.name = name # Identifier
+		def __str__(self):
+			ret = "FormalParam:\n"
+			ret += "type: " + str(self.type) + "; name: " + str(self.name) + "\n"
+			return ret
+	def __init__(self, name, context):
+		Definition.__init__(self, name, context)
 		self.formalparams = []       # FormalParam
-		self.block        = []       # Statement
-		self.encloser     = encloser # Program, Procedure, or Function
-		self.scope        = Scope(encloser)  # Definition
+		self.block        = Block()  # Statement
+		self.context      = context  # Scope
 	def addParam(self, type, name):
-		self.formalparams.append(FormalParam(type, name))
+		self.formalparams.append(self.FormalParam(type, name))
 	def addStmt(self, statement):
-		self.block.append(statement)
+		print "stmt added: " + str(statement)
+		self.block.add(statement)
 	def bind(self, name, value):
 		pass # return copy of procedure with name bound to value
 	def execute(self, params):
 		pass # bind params, execute statements.  stop on "return"
 			 # statements can't return, but that's enforced in parsing. 
 			 # functions CAN return, and inherit from here.  easier than repeating logic
+	def __str__(self):
+		ret = "Procedure:\n"
+		for parm in self.formalparams:
+			ret += str(parm)
+		for stmt in self.block.statements:
+			ret += str(stmt)
+		return ret
 
 class Function(Procedure):
-	def __init__(self, scope, type, name, encloser, root):
-		Procedure.__init__(self, scope, name, encloser, root)
+	def __init__(self, type, name, context):
+		Procedure.__init__(self, name, context)
 		self.returnType = type # Type
+	def __str__(self):
+		ret = "Function:\n"
+		for parm in self.formalparams:
+			ret += str(parm)
+		return ret
 
 class Expression(Statement):
 	class OpElement:
@@ -92,22 +139,22 @@ class Expression(Statement):
 
 class Cond(Statement):
 	class CondElement:
-		def __init__(self, cond, stmts):
+		def __init__(self, cond, block):
 			self.cond  = cond  # Expression
-			self.block = stmts # Statement
+			self.block = block # Statement
 	def __init__(self):
 		Statement.__init__(self)
 		self.conds = [] # CondElement
 	def append(self, cond, stmts):
-		self.conds.append(CondElement(cond, stmts))
+		self.conds.append(CondElement(cond, block))
 	def execute(self):
 		pass # for each element in turn, test cond.  for the first true one, evaluate corresponding block
 
 class While(Statement):
 	def __init__(self):
-		Statement.__init__(self, cond, stmts)
+		Statement.__init__(self, cond, block)
 		self.cond  = cond  # Expression
-		self.block = stmts # Statement
+		self.block = block # Statement
 	def execute(self):
 		pass # execute cond, then statements if evaluates to true.  repeat.
 
@@ -225,9 +272,13 @@ class ActualParam:
 		self.name = name # Idenfifier, optional
 		self.expr = expr # Expression
 
-class Variable(Indexable):
-	def __init__(self):
-		Indexable.__init__(self)
-		self.type  = None        # Type
+class Variable(Definition):
+	def __init__(self, name, type, context):
+		Definition.__init__(self, name, context)
+		self.type  = type        # Type
 		self.value = None        # Value
 		self.properties = dict() # String-Variable pairs
+	def __str__(self):
+		ret = "Variable:\n"
+		return ret
+
